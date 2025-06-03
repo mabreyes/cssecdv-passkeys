@@ -1,8 +1,9 @@
 services:
   - type: web
     name: passkeys-demo
-    env: static
+    env: node
     buildCommand: npm ci && npm run build
+    startCommand: npm start
     staticPublishPath: ./dist
     pullRequestPreviewsEnabled: true
     headers:
