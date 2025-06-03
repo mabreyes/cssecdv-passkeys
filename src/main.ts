@@ -1,4 +1,4 @@
-import './style.css'
+import './style.css';
 
 // Passkeys Authentication Demo
 class PasskeysAuth {
@@ -23,8 +23,20 @@ class PasskeysAuth {
     this.showMessage('WebAuthn is supported! You can use passkeys.', 'success');
   }
 
+  private getRpId(): string {
+    // Get the current hostname for the RP ID
+    const hostname = window.location.hostname;
+    // For localhost, use 'localhost', for deployed sites use the actual domain
+    return hostname === 'localhost' ? 'localhost' : hostname;
+  }
+
   private render() {
-    const app = document.querySelector<HTMLDivElement>('#app')!;
+    const app = document.querySelector<HTMLDivElement>('#app');
+    if (!app) {
+      this.showMessage('App container not found', 'error');
+      return;
+    }
+
     app.innerHTML = `
       <div class="container">
         <h1>🔐 Passkeys Login Demo</h1>
@@ -82,7 +94,7 @@ class PasskeysAuth {
     // Use event delegation since we're re-rendering
     document.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
-      
+
       if (target.id === 'register-btn') {
         this.register();
       } else if (target.id === 'login-btn') {
@@ -95,7 +107,8 @@ class PasskeysAuth {
 
   private async register() {
     try {
-      const usernameInput = document.querySelector<HTMLInputElement>('#username');
+      const usernameInput =
+        document.querySelector<HTMLInputElement>('#username');
       if (!usernameInput?.value.trim()) {
         this.showMessage('Please enter a username', 'error');
         return;
@@ -111,38 +124,39 @@ class PasskeysAuth {
       // User ID (should be unique and persistent)
       const userId = new TextEncoder().encode(this.username);
 
-      const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions = {
-        challenge,
-        rp: {
-          name: "Passkeys Demo",
-          id: "localhost",
-        },
-        user: {
-          id: userId,
-          name: this.username,
-          displayName: this.username,
-        },
-        pubKeyCredParams: [
-          {
-            alg: -7, // ES256
-            type: "public-key",
+      const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions =
+        {
+          challenge,
+          rp: {
+            name: 'Passkeys Demo',
+            id: this.getRpId(),
           },
-          {
-            alg: -257, // RS256
-            type: "public-key",
+          user: {
+            id: userId,
+            name: this.username,
+            displayName: this.username,
           },
-        ],
-        authenticatorSelection: {
-          authenticatorAttachment: "platform",
-          userVerification: "required",
-        },
-        timeout: 60000,
-        attestation: "direct",
-      };
+          pubKeyCredParams: [
+            {
+              alg: -7, // ES256
+              type: 'public-key',
+            },
+            {
+              alg: -257, // RS256
+              type: 'public-key',
+            },
+          ],
+          authenticatorSelection: {
+            authenticatorAttachment: 'platform',
+            userVerification: 'required',
+          },
+          timeout: 60000,
+          attestation: 'direct',
+        };
 
-      const credential = await navigator.credentials.create({
+      const credential = (await navigator.credentials.create({
         publicKey: publicKeyCredentialCreationOptions,
-      }) as PublicKeyCredential;
+      })) as PublicKeyCredential;
 
       if (credential) {
         // Store credential info (in a real app, send to server)
@@ -150,18 +164,24 @@ class PasskeysAuth {
           id: credential.id,
           rawId: Array.from(new Uint8Array(credential.rawId)),
           username: this.username,
+          rpId: this.getRpId(),
         };
-        
-        localStorage.setItem('passkey_credential', JSON.stringify(credentialData));
+
+        localStorage.setItem(
+          'passkey_credential',
+          JSON.stringify(credentialData)
+        );
         this.showMessage('Passkey created successfully!', 'success');
-        
+
         // Auto login after registration
         this.isLoggedIn = true;
         this.render();
       }
     } catch (error) {
-      console.error('Registration failed:', error);
-      this.showMessage(`Registration failed: ${(error as Error).message}`, 'error');
+      this.showMessage(
+        `Registration failed: ${(error as Error).message}`,
+        'error'
+      );
     }
   }
 
@@ -181,21 +201,22 @@ class PasskeysAuth {
       const challenge = new Uint8Array(32);
       crypto.getRandomValues(challenge);
 
-      const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
-        challenge,
-        allowCredentials: [
-          {
-            id: new Uint8Array(credentialData.rawId),
-            type: "public-key",
-          },
-        ],
-        userVerification: "required",
-        timeout: 60000,
-      };
+      const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions =
+        {
+          challenge,
+          allowCredentials: [
+            {
+              id: new Uint8Array(credentialData.rawId),
+              type: 'public-key',
+            },
+          ],
+          userVerification: 'required',
+          timeout: 60000,
+        };
 
-      const credential = await navigator.credentials.get({
+      const credential = (await navigator.credentials.get({
         publicKey: publicKeyCredentialRequestOptions,
-      }) as PublicKeyCredential;
+      })) as PublicKeyCredential;
 
       if (credential) {
         this.username = credentialData.username;
@@ -204,7 +225,6 @@ class PasskeysAuth {
         this.render();
       }
     } catch (error) {
-      console.error('Login failed:', error);
       this.showMessage(`Login failed: ${(error as Error).message}`, 'error');
     }
   }
@@ -221,7 +241,7 @@ class PasskeysAuth {
     if (messageEl) {
       messageEl.textContent = text;
       messageEl.className = `message ${type}`;
-      
+
       // Clear message after 5 seconds
       setTimeout(() => {
         messageEl.textContent = '';

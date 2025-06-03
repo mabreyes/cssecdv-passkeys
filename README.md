@@ -2,6 +2,8 @@
 
 A modern, secure login demo using **Passkeys** (WebAuthn) for passwordless authentication built with Vite and TypeScript.
 
+**Live Demo:** [https://passkeys.marcr.xyz](https://passkeys.marcr.xyz)
+
 ## ✨ Features
 
 - 🔒 **Passwordless Authentication** - No passwords to remember or manage
@@ -10,28 +12,39 @@ A modern, secure login demo using **Passkeys** (WebAuthn) for passwordless authe
 - 🎨 **Modern UI** - Beautiful, responsive design with smooth animations
 - ⚡ **Fast & Lightweight** - Built with Vite for optimal performance
 - 🔐 **Secure** - Biometric data never leaves your device
+- 🚀 **Production Ready** - Deployed on Render.com with proper security headers
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js (version 14 or higher)
+- Node.js (version 18 or higher)
+- npm (version 8 or higher)
 - A modern browser that supports WebAuthn
 - A device with biometric authentication (Face ID, Touch ID, Windows Hello) or a security key
 
 ### Installation
 
-1. **Install dependencies:**
+1. **Clone the repository:**
+
+   ```bash
+   git clone <repository-url>
+   cd cssecdv-passkeys
+   ```
+
+2. **Install dependencies:**
+
    ```bash
    npm install
    ```
 
-2. **Start the development server:**
+3. **Start the development server:**
+
    ```bash
    npm run dev
    ```
 
-3. **Open your browser** and navigate to `http://localhost:5173`
+4. **Open your browser** and navigate to `http://localhost:5173`
 
 ## 🔧 How to Use
 
@@ -65,6 +78,7 @@ This demo implements the Web Authentication API (WebAuthn) with the following fe
 - **Credential Authentication** - Verifies identity using stored passkeys
 - **Platform Authenticators** - Prefers built-in biometric authentication
 - **User Verification** - Requires biometric confirmation for security
+- **Dynamic RP ID** - Automatically adapts to localhost and production domains
 
 ### Security Features
 
@@ -72,6 +86,8 @@ This demo implements the Web Authentication API (WebAuthn) with the following fe
 - ✅ **Phishing Resistant** - Passkeys are bound to specific domains
 - ✅ **Replay Attack Protection** - Each authentication uses unique challenges
 - ✅ **Device-Bound Security** - Private keys never leave your device
+- ✅ **Security Headers** - Proper CSP and security headers in production
+- ✅ **HTTPS Required** - WebAuthn requires secure connections
 
 ### Browser Support
 
@@ -90,9 +106,19 @@ src/
 └── vite-env.d.ts    # TypeScript environment definitions
 
 public/              # Static assets
+├── _redirects       # Render.com routing configuration
+└── vite.svg         # Vite logo
+
+.husky/              # Git hooks
+├── pre-commit       # Runs lint-staged before commits
+└── pre-push         # Runs all checks before push
+
 index.html          # HTML entry point
 package.json        # Dependencies and scripts
 tsconfig.json       # TypeScript configuration
+render.yaml         # Render.com deployment configuration
+.eslintrc.json      # ESLint configuration
+.prettierrc         # Prettier configuration
 ```
 
 ## 🔍 Code Highlights
@@ -103,12 +129,12 @@ tsconfig.json       # TypeScript configuration
 const credential = await navigator.credentials.create({
   publicKey: {
     challenge: cryptoChallenge,
-    rp: { name: "Passkeys Demo", id: "localhost" },
+    rp: { name: 'Passkeys Demo', id: this.getRpId() },
     user: { id: userId, name: username, displayName: username },
-    pubKeyCredParams: [{ alg: -7, type: "public-key" }],
+    pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
     authenticatorSelection: {
-      authenticatorAttachment: "platform",
-      userVerification: "required",
+      authenticatorAttachment: 'platform',
+      userVerification: 'required',
     },
   },
 });
@@ -120,8 +146,8 @@ const credential = await navigator.credentials.create({
 const credential = await navigator.credentials.get({
   publicKey: {
     challenge: cryptoChallenge,
-    allowCredentials: [{ id: credentialId, type: "public-key" }],
-    userVerification: "required",
+    allowCredentials: [{ id: credentialId, type: 'public-key' }],
+    userVerification: 'required',
   },
 });
 ```
@@ -129,11 +155,69 @@ const credential = await navigator.credentials.get({
 ## 🚀 Building for Production
 
 ```bash
+# Run all checks
+npm run check-all
+
 # Build the app
 npm run build
 
 # Preview the production build
 npm run preview
+
+# Clean build
+npm run build:clean
+```
+
+## 🌐 Deployment on Render.com
+
+This project is configured for easy deployment on Render.com:
+
+### Automatic Deployment
+
+1. **Fork/Clone** this repository
+2. **Connect to Render.com** and create a new Static Site
+3. **Use these settings:**
+   - **Build Command:** `npm ci && npm run build`
+   - **Publish Directory:** `./dist`
+4. **Deploy!** The `render.yaml` file will handle the rest
+
+### Manual Deployment
+
+```bash
+# Build for production
+npm run build
+
+# The dist/ folder contains your deployable assets
+```
+
+### Environment Configuration
+
+The app automatically adapts to different environments:
+
+- **Development:** Uses `localhost` for WebAuthn RP ID
+- **Production:** Uses the actual domain for WebAuthn RP ID
+
+## 🔧 Development Workflow
+
+### Pre-commit Hooks
+
+This project uses Husky for Git hooks:
+
+- **Pre-commit:** Runs ESLint and Prettier on staged files
+- **Pre-push:** Runs type checking, linting, and format checking
+
+### Available Scripts
+
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run preview      # Preview production build
+npm run lint         # Run ESLint
+npm run lint:fix     # Fix ESLint issues
+npm run format       # Format code with Prettier
+npm run format:check # Check code formatting
+npm run type-check   # Run TypeScript type checking
+npm run check-all    # Run all checks
 ```
 
 ## 🤝 Contributing
@@ -144,13 +228,22 @@ Feel free to contribute by:
 2. 🌿 Creating a feature branch
 3. 💻 Making your improvements
 4. 📝 Adding tests if applicable
-5. 🔄 Submitting a pull request
+5. ✅ Ensuring all checks pass (`npm run check-all`)
+6. 🔄 Submitting a pull request
+
+All code is automatically checked for:
+
+- ✅ TypeScript type safety
+- ✅ ESLint rules compliance
+- ✅ Prettier formatting
+- ✅ Git commit hooks
 
 ## 📚 Learn More
 
 - [WebAuthn Guide](https://webauthn.guide/) - Comprehensive WebAuthn documentation
 - [Passkeys.dev](https://passkeys.dev/) - Resources for implementing passkeys
 - [Web Authentication API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) - MDN documentation
+- [Render.com Docs](https://render.com/docs) - Deployment documentation
 
 ## ⚠️ Important Notes
 
@@ -160,22 +253,35 @@ Feel free to contribute by:
   - Store credentials securely on the server
   - Add proper error handling and fallbacks
   - Implement additional security measures
+  - Use a proper database instead of localStorage
 
 ## 🐛 Troubleshooting
 
 ### "WebAuthn is not supported"
+
 - Use a modern browser (Chrome 67+, Safari 14+, Firefox 60+)
 - Ensure you're on HTTPS or localhost
 
 ### Registration/Login Fails
+
 - Check that your device supports biometric authentication
 - Try using a security key as an alternative
 - Clear browser data and try again
+- Ensure you're on a secure connection (HTTPS)
 
 ### No Passkey Found
+
 - Register first before attempting to login
 - Check if you're using the same browser and device
+- Passkeys are domain-specific - localhost vs production are different
+
+### Deployment Issues
+
+- Ensure Node.js version is 18+
+- Check that build command completes successfully
+- Verify `dist/` folder is created after build
 
 ---
 
-**Built with ❤️ using Vite, TypeScript, and WebAuthn** 
+**Built with ❤️ by Marc Reyes <hi@marcr.xyz>**  
+**Using Vite, TypeScript, and WebAuthn**
