@@ -72,7 +72,7 @@ class PasskeysAuth {
           <h3>How it works:</h3>
           <ul>
             <li>Register: Create a new passkey for your account</li>
-            <li>Login: Use your registered passkey to authenticate</li>
+            <li>Login: Authenticate with any registered passkey on this device</li>
             <li>Secure: Your biometric data never leaves your device</li>
           </ul>
         </div>
@@ -187,14 +187,6 @@ class PasskeysAuth {
 
   private async login() {
     try {
-      // Check if we have a stored credential
-      const storedCredential = localStorage.getItem('passkey_credential');
-      if (!storedCredential) {
-        this.showMessage('No passkey found. Please register first.', 'error');
-        return;
-      }
-
-      const credentialData = JSON.parse(storedCredential);
       this.showMessage('Authenticating with passkey...', 'info');
 
       // Generate a random challenge
@@ -204,12 +196,6 @@ class PasskeysAuth {
       const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions =
         {
           challenge,
-          allowCredentials: [
-            {
-              id: new Uint8Array(credentialData.rawId),
-              type: 'public-key',
-            },
-          ],
           userVerification: 'required',
           timeout: 60000,
         };
@@ -219,7 +205,13 @@ class PasskeysAuth {
       })) as PublicKeyCredential;
 
       if (credential) {
-        this.username = credentialData.username;
+        // Try to get username from stored credential if available
+        const storedCredential = localStorage.getItem('passkey_credential');
+        const username = storedCredential
+          ? JSON.parse(storedCredential).username
+          : 'User';
+
+        this.username = username;
         this.isLoggedIn = true;
         this.showMessage('Login successful!', 'success');
         this.render();
