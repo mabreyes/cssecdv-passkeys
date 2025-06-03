@@ -28,7 +28,7 @@ A modern, secure login demo using **Passkeys** (WebAuthn) for passwordless authe
 1. **Clone the repository:**
 
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/mabreyes/cssecdv-passkeys
    cd cssecdv-passkeys
    ```
 
