@@ -6,7 +6,35 @@ class PasskeysAuth {
   private isLoggedIn: boolean = false;
 
   constructor() {
+    this.restoreLoginState();
     this.init();
+  }
+
+  private restoreLoginState() {
+    try {
+      const loginState = localStorage.getItem('passkey_login_state');
+      if (loginState) {
+        const { isLoggedIn, username } = JSON.parse(loginState);
+        this.isLoggedIn = isLoggedIn;
+        this.username = username || '';
+      }
+    } catch (error) {
+      console.error('Failed to restore login state:', error);
+      // Clear corrupted data
+      localStorage.removeItem('passkey_login_state');
+    }
+  }
+
+  private saveLoginState() {
+    try {
+      const loginState = {
+        isLoggedIn: this.isLoggedIn,
+        username: this.username,
+      };
+      localStorage.setItem('passkey_login_state', JSON.stringify(loginState));
+    } catch (error) {
+      console.error('Failed to save login state:', error);
+    }
   }
 
   private init() {
@@ -175,6 +203,7 @@ class PasskeysAuth {
 
         // Auto login after registration
         this.isLoggedIn = true;
+        this.saveLoginState();
         this.render();
       }
     } catch (error) {
@@ -214,6 +243,7 @@ class PasskeysAuth {
         this.username = username;
         this.isLoggedIn = true;
         this.showMessage('Login successful!', 'success');
+        this.saveLoginState();
         this.render();
       }
     } catch (error) {
@@ -225,6 +255,7 @@ class PasskeysAuth {
     this.isLoggedIn = false;
     this.username = '';
     this.showMessage('Logged out successfully', 'info');
+    this.saveLoginState();
     this.render();
   }
 
