@@ -1,5 +1,7 @@
 # 🔐 Passkeys Authentication Demo
 
+![Demo](demo.gif)
+
 A modern, secure, full-stack passkeys authentication system with real-time username validation, PostgreSQL persistence, and comprehensive Docker setup. Built with Vite, TypeScript, and Express.js.
 
 **🌐 Live Demo:** [https://passkeys.marcr.xyz](https://passkeys.marcr.xyz)  
