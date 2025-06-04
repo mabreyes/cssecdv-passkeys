@@ -44,5 +44,5 @@ CREATE TRIGGER update_users_updated_at
 INSERT INTO users (username) VALUES ('testuser') ON CONFLICT (username) DO NOTHING;
 
 -- Grant permissions
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO passkeys_user;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO passkeys_user; 
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO mabreyes;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO mabreyes; 

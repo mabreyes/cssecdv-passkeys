@@ -19,9 +19,18 @@ const { Pool } = pg;
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Configuration from environment variables
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const DATABASE_URL = process.env.DATABASE_URL;
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+const RP_ID =
+  process.env.RP_ID || (NODE_ENV === 'production' ? undefined : 'localhost');
+const RP_NAME = process.env.RP_NAME || 'Passkeys Demo';
+const EXPECTED_ORIGIN = process.env.EXPECTED_ORIGIN || CORS_ORIGIN;
+
 // Database connection
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: DATABASE_URL,
 });
 
 // Middleware
@@ -33,7 +42,7 @@ app.use(
 
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: CORS_ORIGIN,
     credentials: true,
   })
 );
@@ -128,9 +137,8 @@ app.post('/api/register/begin', async (req, res) => {
     }));
 
     const options = await generateRegistrationOptions({
-      rpName: 'Passkeys Demo',
-      rpID:
-        process.env.NODE_ENV === 'production' ? req.get('host') : 'localhost',
+      rpName: RP_NAME,
+      rpID: RP_ID,
       userID: isoUint8Array.fromUTF8String(user.id.toString()),
       userName: username,
       userDisplayName: username,
@@ -207,9 +215,8 @@ app.post('/api/register/complete', async (req, res) => {
     const verification = await verifyRegistrationResponse({
       response: credential,
       expectedChallenge: expectedChallenge,
-      expectedOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-      expectedRPID:
-        process.env.NODE_ENV === 'production' ? req.get('host') : 'localhost',
+      expectedOrigin: EXPECTED_ORIGIN,
+      expectedRPID: RP_ID,
     });
 
     console.log('Verification result:', verification.verified);
@@ -233,7 +240,7 @@ app.post('/api/register/complete', async (req, res) => {
         credential.id, // Use the original credential.id from browser (already base64url)
         credentialPublicKey,
         credentialID,
-        process.env.NODE_ENV === 'production' ? req.get('host') : 'localhost'
+        RP_ID
       );
 
       // Clean up challenge
@@ -262,8 +269,7 @@ app.post('/api/register/complete', async (req, res) => {
 app.post('/api/authenticate/begin', async (req, res) => {
   try {
     const options = await generateAuthenticationOptions({
-      rpID:
-        process.env.NODE_ENV === 'production' ? req.get('host') : 'localhost',
+      rpID: RP_ID,
       userVerification: 'required',
     });
 
@@ -345,9 +351,8 @@ app.post('/api/authenticate/complete', async (req, res) => {
     const verification = await verifyAuthenticationResponse({
       response: credential,
       expectedChallenge: expectedChallenge,
-      expectedOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-      expectedRPID:
-        process.env.NODE_ENV === 'production' ? req.get('host') : 'localhost',
+      expectedOrigin: EXPECTED_ORIGIN,
+      expectedRPID: RP_ID,
       authenticator: {
         credentialID: base64url.toBuffer(storedCredential.id),
         credentialPublicKey: storedCredential.public_key,
@@ -418,12 +423,8 @@ app.use((req, res) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Passkeys backend server running on port ${PORT}`);
-  console.log(
-    `📊 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`
-  );
-  console.log(
-    `🌐 CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:5173'}`
-  );
+  console.log(`📊 Database: ${DATABASE_URL ? 'Connected' : 'Not configured'}`);
+  console.log(`🌐 CORS Origin: ${CORS_ORIGIN}`);
 });
 
 // Graceful shutdown
