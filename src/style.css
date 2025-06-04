@@ -1,19 +1,87 @@
+/* Material Icons font */
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
+/* Material Design 3 Theme Variables */
 :root {
-  --primary-color: #4f46e5;
-  --primary-hover: #4338ca;
-  --secondary-color: #6b7280;
-  --success-color: #10b981;
-  --error-color: #ef4444;
-  --warning-color: #f59e0b;
-  --background: #f9fafb;
-  --surface: #ffffff;
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --border: #e5e7eb;
-  --border-focus: #3b82f6;
-  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-lg:
-    0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  /* Primary color scheme - Changed to indigo */
+  --md-sys-color-primary: #4f46e5;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #e0e7ff;
+  --md-sys-color-on-primary-container: #1e1b4b;
+
+  /* Secondary color scheme */
+  --md-sys-color-secondary: #625b71;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #e8def8;
+  --md-sys-color-on-secondary-container: #1d192b;
+
+  /* Tertiary color scheme - Updated to complement indigo */
+  --md-sys-color-tertiary: #7c3aed;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-tertiary-container: #ede9fe;
+  --md-sys-color-on-tertiary-container: #2e1065;
+
+  /* Error color scheme */
+  --md-sys-color-error: #ba1a1a;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #ffdad6;
+  --md-sys-color-on-error-container: #410002;
+
+  /* Surface color scheme */
+  --md-sys-color-surface: #fffbfe;
+  --md-sys-color-on-surface: #1c1b1f;
+  --md-sys-color-surface-variant: #e7e0ec;
+  --md-sys-color-on-surface-variant: #49454f;
+  --md-sys-color-surface-container: #f3edf7;
+  --md-sys-color-surface-container-high: #ece6f0;
+  --md-sys-color-surface-container-highest: #e6e0e9;
+
+  /* Background color scheme */
+  --md-sys-color-background: #fffbfe;
+  --md-sys-color-on-background: #1c1b1f;
+
+  /* Outline colors */
+  --md-sys-color-outline: #79747e;
+  --md-sys-color-outline-variant: #cab6cf;
+}
+
+/* Dark theme */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --md-sys-color-primary: #818cf8;
+    --md-sys-color-on-primary: #312e81;
+    --md-sys-color-primary-container: #3730a3;
+    --md-sys-color-on-primary-container: #e0e7ff;
+
+    --md-sys-color-secondary: #ccc2dc;
+    --md-sys-color-on-secondary: #332d41;
+    --md-sys-color-secondary-container: #4a4458;
+    --md-sys-color-on-secondary-container: #e8def8;
+
+    --md-sys-color-tertiary: #a78bfa;
+    --md-sys-color-on-tertiary: #4c1d95;
+    --md-sys-color-tertiary-container: #5b21b6;
+    --md-sys-color-on-tertiary-container: #ede9fe;
+
+    --md-sys-color-error: #ffb4ab;
+    --md-sys-color-on-error: #690005;
+    --md-sys-color-error-container: #93000a;
+    --md-sys-color-on-error-container: #ffdad6;
+
+    --md-sys-color-surface: #1c1b1f;
+    --md-sys-color-on-surface: #e6e1e5;
+    --md-sys-color-surface-variant: #49454f;
+    --md-sys-color-on-surface-variant: #cab6cf;
+    --md-sys-color-surface-container: #211f26;
+    --md-sys-color-surface-container-high: #2b2930;
+    --md-sys-color-surface-container-highest: #36343b;
+
+    --md-sys-color-background: #141218;
+    --md-sys-color-on-background: #e6e1e5;
+
+    --md-sys-color-outline: #938f99;
+    --md-sys-color-outline-variant: #49454f;
+  }
 }
 
 * {
@@ -24,258 +92,472 @@
 
 body {
   font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
-    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', 'Roboto', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(
+    135deg,
+    var(--md-sys-color-background) 0%,
+    var(--md-sys-color-surface-container) 100%
+  );
+  color: var(--md-sys-color-on-background);
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 24px;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(
+      circle at 20% 80%,
+      rgba(103, 80, 164, 0.05) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 20%,
+      rgba(125, 82, 96, 0.05) 0%,
+      transparent 50%
+    );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Material Symbols styling */
+.material-symbols-rounded {
+  font-family: 'Material Symbols Rounded' !important;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
 }
 
 .container {
   width: 100%;
-  max-width: 480px;
+  max-width: 600px;
   margin: 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
 h1 {
   text-align: center;
-  color: white;
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin-bottom: 2rem;
-  text-shadow: 0 2px 4px rgb(0 0 0 / 0.1);
+  background: linear-gradient(
+    135deg,
+    var(--md-sys-color-primary) 0%,
+    var(--md-sys-color-tertiary) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 2.25rem;
+  font-weight: 500;
+  line-height: 1.2;
+  margin-bottom: 2.5rem;
+  letter-spacing: -0.02em;
 }
 
-.card {
-  background: var(--surface);
-  border-radius: 16px;
-  box-shadow: var(--shadow-lg);
-  padding: 2rem;
-  margin-bottom: 1rem;
-  border: 1px solid var(--border);
+.main-card {
+  margin-bottom: 16px;
+  padding: 40px;
+  background: var(--md-sys-color-surface);
+  border-radius: 28px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.main-card:hover {
+  transform: translateY(-2px);
 }
 
 .login-section h2 {
-  color: var(--text-primary);
+  color: var(--md-sys-color-on-surface);
   font-size: 1.875rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
+  font-weight: 500;
+  margin-bottom: 12px;
   text-align: center;
+  letter-spacing: -0.01em;
 }
 
 .login-section > p {
-  color: var(--text-secondary);
+  color: var(--md-sys-color-on-surface-variant);
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 36px;
   font-size: 1rem;
+  line-height: 1.6;
+  font-weight: 400;
 }
 
 .form-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: 28px;
 }
 
-.form-group label {
-  display: block;
-  font-weight: 500;
-  margin-bottom: 0.5rem;
-  color: var(--text-primary);
-}
-
-.form-group input {
+.form-group md-filled-text-field {
   width: 100%;
-  padding: 0.75rem 1rem;
-  border: 2px solid var(--border);
-  border-radius: 8px;
-  font-size: 1rem;
-  transition:
-    border-color 0.2s,
-    box-shadow 0.2s;
-  background: var(--surface);
+  --md-filled-text-field-container-color: var(
+    --md-sys-color-surface-container-highest
+  );
+  --md-filled-text-field-container-shape: 28px;
+  --md-filled-text-field-focus-outline-color: transparent;
+  --md-filled-text-field-outline-color: transparent;
+  --md-filled-text-field-hover-outline-color: transparent;
+  --md-filled-text-field-disabled-outline-color: transparent;
+  --md-filled-text-field-error-outline-color: transparent;
+  --md-filled-text-field-focus-outline-width: 0;
+  --md-filled-text-field-outline-width: 0;
+  --md-filled-text-field-hover-outline-width: 0;
+  --md-filled-text-field-disabled-outline-width: 0;
+  --md-filled-text-field-error-outline-width: 0;
+  --md-filled-text-field-active-indicator-color: transparent;
+  --md-filled-text-field-focus-active-indicator-color: transparent;
+  --md-filled-text-field-hover-active-indicator-color: transparent;
+  --md-filled-text-field-active-indicator-height: 0;
+  --md-filled-text-field-focus-active-indicator-height: 0;
+  --md-filled-text-field-hover-active-indicator-height: 0;
+  --md-filled-text-field-hover-state-layer-opacity: 0.08;
+  --md-filled-text-field-label-text-color: var(
+    --md-sys-color-on-surface-variant
+  );
+  --md-filled-text-field-input-text-color: var(--md-sys-color-on-surface);
+  --md-filled-text-field-label-text-font:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', 'Roboto', sans-serif;
+  --md-filled-text-field-input-text-font:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', 'Roboto', sans-serif;
+  --md-filled-text-field-supporting-text-font:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', 'Roboto', sans-serif;
+  border-radius: 28px;
+  border: none !important;
+  outline: none !important;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', 'Roboto', sans-serif;
 }
 
-.form-group input:focus {
-  outline: none;
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+.form-group md-filled-text-field::part(field) {
+  border: none !important;
+  outline: none !important;
+  border-radius: 28px;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', 'Roboto', sans-serif;
 }
 
-.form-group input::placeholder {
-  color: var(--text-secondary);
+.form-group md-filled-text-field::part(container) {
+  border: none !important;
+  outline: none !important;
+  border-radius: 28px;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.form-group md-filled-text-field::part(input) {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', 'Roboto', sans-serif !important;
+}
+
+.form-group md-filled-text-field::part(label) {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', 'Roboto', sans-serif !important;
+}
+
+.form-group md-filled-text-field::part(active-indicator) {
+  display: none !important;
+}
+
+.form-group md-filled-text-field::part(outline) {
+  display: none !important;
+}
+
+/* Material Web Components Font Override */
+md-filled-button,
+md-outlined-button,
+md-list,
+md-list-item,
+md-filled-text-field {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', 'Roboto', sans-serif !important;
+}
+
+/* More specific Material Web component font overrides */
+md-filled-button::part(button),
+md-filled-button::part(label),
+md-outlined-button::part(button),
+md-outlined-button::part(label),
+md-list-item::part(content),
+md-list-item::part(headline),
+md-list-item::part(supporting-text),
+md-filled-text-field::part(input),
+md-filled-text-field::part(label) {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', 'Roboto', sans-serif !important;
+}
+
+/* Additional override for any text content within Material components - but exclude icon elements */
+md-filled-button *:not(.material-symbols-rounded),
+md-outlined-button *:not(.material-symbols-rounded),
+md-list *:not(.material-symbols-rounded),
+md-list-item *:not(.material-symbols-rounded),
+md-filled-text-field *:not(.material-symbols-rounded) {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', 'Roboto', sans-serif !important;
 }
 
 .button-group {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 2rem;
+  gap: 16px;
+  margin-bottom: 36px;
 }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.875rem 1.5rem;
-  border: none;
-  border-radius: 8px;
+.primary-button {
+  width: 100%;
+  height: 56px;
+  --md-filled-button-container-color: var(--md-sys-color-primary);
+  --md-filled-button-label-text-color: var(--md-sys-color-on-primary);
+  --md-filled-button-container-shape: 28px;
+  --md-filled-button-hover-state-layer-opacity: 0.08;
+  --md-filled-button-pressed-state-layer-opacity: 0.12;
   font-size: 1rem;
   font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
-  min-height: 44px;
+  letter-spacing: 0.01em;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', 'Roboto', sans-serif !important;
 }
 
-.btn-primary {
-  background: var(--primary-color);
-  color: white;
-  box-shadow: var(--shadow);
+.secondary-button,
+.logout-button {
+  width: 100%;
+  height: 56px;
+  --md-outlined-button-outline-color: var(--md-sys-color-outline);
+  --md-outlined-button-label-text-color: var(--md-sys-color-primary);
+  --md-outlined-button-container-shape: 28px;
+  --md-outlined-button-hover-state-layer-color: var(--md-sys-color-primary);
+  --md-outlined-button-hover-state-layer-opacity: 0.08;
+  --md-outlined-button-pressed-state-layer-opacity: 0.12;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', 'Roboto', sans-serif !important;
 }
 
-.btn-primary:hover {
-  background: var(--primary-hover);
+.info-card {
+  background: var(--md-sys-color-surface-container-high);
+  border-radius: 24px;
+  padding: 28px;
+  margin-top: 28px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.info-card:hover {
   transform: translateY(-1px);
-  box-shadow:
-    0 4px 6px -1px rgb(0 0 0 / 0.1),
-    0 2px 4px -2px rgb(0 0 0 / 0.1);
-}
-
-.btn-secondary {
-  background: var(--secondary-color);
-  color: white;
-  box-shadow: var(--shadow);
-}
-
-.btn-secondary:hover {
-  background: #4b5563;
-  transform: translateY(-1px);
-  box-shadow:
-    0 4px 6px -1px rgb(0 0 0 / 0.1),
-    0 2px 4px -2px rgb(0 0 0 / 0.1);
-}
-
-.btn:active {
-  transform: translateY(0);
-}
-
-.info {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 1.5rem;
 }
 
 .info h3 {
-  color: var(--text-primary);
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
+  color: var(--md-sys-color-on-surface);
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin-bottom: 20px;
+  letter-spacing: -0.01em;
 }
 
-.info ul {
-  list-style: none;
+.info md-list {
+  --md-list-container-color: transparent;
+  margin: 0;
   padding: 0;
 }
 
-.info li {
-  color: var(--text-secondary);
-  margin-bottom: 0.5rem;
-  padding-left: 1.5rem;
-  position: relative;
+.info md-list-item {
+  --md-list-item-label-text-color: var(--md-sys-color-on-surface-variant);
+  --md-list-item-leading-icon-color: var(--md-sys-color-primary);
+  --md-list-item-container-shape: 12px;
+  --md-list-item-hover-state-layer-color: var(--md-sys-color-primary);
+  --md-list-item-hover-state-layer-opacity: 0.04;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
 }
 
-.info li::before {
-  content: '✓';
-  position: absolute;
-  left: 0;
-  color: var(--success-color);
-  font-weight: bold;
+.info md-list-item:hover {
+  background: rgba(103, 80, 164, 0.04);
 }
 
 .dashboard {
   text-align: center;
+  padding: 20px 0;
 }
 
 .dashboard h2 {
-  color: var(--text-primary);
-  font-size: 1.875rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
+  background: linear-gradient(
+    135deg,
+    var(--md-sys-color-primary) 0%,
+    var(--md-sys-color-tertiary) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 2rem;
+  font-weight: 500;
+  margin-bottom: 16px;
+  letter-spacing: -0.01em;
 }
 
 .dashboard p {
-  color: var(--text-secondary);
-  margin-bottom: 2rem;
+  color: var(--md-sys-color-on-surface-variant);
+  margin-bottom: 36px;
   font-size: 1.125rem;
+  line-height: 1.6;
+  font-weight: 400;
 }
 
 .message {
-  padding: 1rem;
-  border-radius: 8px;
+  padding: 20px 24px;
+  border-radius: 16px;
   font-weight: 500;
   text-align: center;
-  margin-top: 1rem;
-  transition: all 0.3s;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  margin-top: 20px;
+  margin-bottom: 28px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--md-sys-color-surface-container);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--md-sys-color-on-surface);
+  position: relative;
+  overflow: hidden;
+}
+
+.message::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  transition: all 0.3s ease;
 }
 
 .message.success {
-  background: #f0fdf4;
-  color: #15803d;
+  background: linear-gradient(135deg, #e8f5e8, #f0fdf4);
+  color: #166534;
   border-color: #bbf7d0;
 }
 
+.message.success::before {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
 .message.error {
-  background: #fef2f2;
-  color: #dc2626;
-  border-color: #fecaca;
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  border-color: var(--md-sys-color-error);
+}
+
+.message.error::before {
+  background: var(--md-sys-color-error);
 }
 
 .message.info {
-  background: #f0f9ff;
-  color: #0369a1;
-  border-color: #bae6fd;
+  background: linear-gradient(135deg, #eff6ff, #f0f9ff);
+  color: var(--md-sys-color-primary);
+  border-color: #dbeafe;
+}
+
+.message.info::before {
+  background: linear-gradient(
+    90deg,
+    var(--md-sys-color-primary),
+    var(--md-sys-color-tertiary)
+  );
 }
 
 .message:empty {
   display: none;
+  margin: 0;
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+  .message.success {
+    background: linear-gradient(135deg, #0f2419, #14532d);
+    color: #4ade80;
+    border-color: #166534;
+  }
+
+  .message.info {
+    background: linear-gradient(135deg, #0c1e2d, #164e63);
+    color: #7dd3fc;
+    border-color: #0891b2;
+  }
 }
 
 /* Responsive design */
 @media (max-width: 640px) {
   body {
-    padding: 1rem;
+    padding: 20px;
   }
 
   h1 {
     font-size: 2rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
   }
 
-  .card {
-    padding: 1.5rem;
+  .main-card {
+    padding: 32px 24px;
+    border-radius: 24px;
   }
 
   .login-section h2 {
-    font-size: 1.5rem;
+    font-size: 1.625rem;
   }
 
-  .btn {
-    padding: 1rem 1.5rem;
+  .info-card {
+    padding: 24px 20px;
+    border-radius: 20px;
   }
 }
 
-/* Animation for smooth transitions */
-@keyframes fadeIn {
+/* Enhanced animations */
+@keyframes slideInUp {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -283,23 +565,33 @@ h1 {
   }
 }
 
-.card {
-  animation: fadeIn 0.3s ease-out;
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
-/* Loading state for buttons */
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none !important;
+.main-card {
+  animation: slideInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Focus visible for accessibility */
-.btn:focus-visible {
-  outline: 2px solid var(--primary-color);
+.info-card {
+  animation: slideInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.1s both;
+}
+
+.message {
+  animation: fadeInScale 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced focus states */
+.primary-button:focus-visible,
+.secondary-button:focus-visible,
+.logout-button:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
   outline-offset: 2px;
-}
-
-.form-group input:focus-visible {
-  outline: none;
 }

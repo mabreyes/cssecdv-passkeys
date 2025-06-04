@@ -8,10 +8,10 @@ export class UIRenderer {
     app.innerHTML = `
       <div class="container">
         <h1>🔐 Passkeys Login Demo</h1>
-        <div class="card">
+        <div id="message" class="message"></div>
+        <div class="main-card">
           ${isLoggedIn ? this.renderDashboard(username) : this.renderLogin()}
         </div>
-        <div id="message" class="message"></div>
       </div>
     `;
   }
@@ -23,26 +23,43 @@ export class UIRenderer {
         <p>Use passkeys for secure, passwordless authentication</p>
         
         <div class="form-group">
-          <label for="username">Username:</label>
-          <input type="text" id="username" placeholder="Enter your username" />
+          <md-filled-text-field
+            id="username"
+            label="Username"
+            placeholder="Enter your username"
+            type="text">
+          </md-filled-text-field>
         </div>
         
         <div class="button-group">
-          <button id="register-btn" class="btn btn-primary">
-            📝 Register with Passkey
-          </button>
-          <button id="login-btn" class="btn btn-secondary">
-            🔑 Login with Passkey
-          </button>
+          <md-filled-button id="register-btn" class="primary-button">
+            <span class="material-symbols-rounded" slot="icon">fingerprint</span>
+            Register with Passkey
+          </md-filled-button>
+          <md-outlined-button id="login-btn" class="secondary-button">
+            <span class="material-symbols-rounded" slot="icon">vpn_key</span>
+            Login with Passkey
+          </md-outlined-button>
         </div>
         
-        <div class="info">
-          <h3>How it works:</h3>
-          <ul>
-            <li>Register: Create a new passkey for your account</li>
-            <li>Login: Authenticate with any registered passkey on this device</li>
-            <li>Secure: Your biometric data never leaves your device</li>
-          </ul>
+        <div class="info-card">
+          <div class="info">
+            <h3>How it works:</h3>
+            <md-list>
+              <md-list-item>
+                <span class="material-symbols-rounded" slot="start">add_circle</span>
+                <div slot="headline">Register: Create a new passkey for your account</div>
+              </md-list-item>
+              <md-list-item>
+                <span class="material-symbols-rounded" slot="start">login</span>
+                <div slot="headline">Login: Authenticate with any registered passkey on this device</div>
+              </md-list-item>
+              <md-list-item>
+                <span class="material-symbols-rounded" slot="start">security</span>
+                <div slot="headline">Secure: Your biometric data never leaves your device</div>
+              </md-list-item>
+            </md-list>
+          </div>
         </div>
       </div>
     `;
@@ -53,13 +70,16 @@ export class UIRenderer {
       <div class="dashboard">
         <h2>Welcome back, ${username}! 🎉</h2>
         <p>You are successfully logged in with your passkey.</p>
-        <button id="logout-btn" class="btn btn-secondary">Logout</button>
+        <md-outlined-button id="logout-btn" class="logout-button">
+          <span class="material-symbols-rounded" slot="icon">logout</span>
+          Logout
+        </md-outlined-button>
       </div>
     `;
   }
 
   static getUsernameInput(): string {
-    const usernameInput = document.querySelector<HTMLInputElement>('#username');
+    const usernameInput = document.querySelector<any>('#username');
     return usernameInput?.value.trim() || '';
   }
 }

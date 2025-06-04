@@ -32,7 +32,8 @@
     "check-staged": "npm run type-check:staged && npx lint-staged"
   },
   "dependencies": {
-    "serve": "^14.2.0"
+    "serve": "^14.2.0",
+    "@material/web": "^1.5.0"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.21.0",
