@@ -242,7 +242,6 @@ h1 {
 .form-group {
   margin-bottom: 28px;
   width: 100%;
-  max-width: 400px;
 }
 
 .form-group md-filled-text-field {
@@ -370,7 +369,6 @@ md-filled-text-field *:not(.material-symbols-rounded) {
   gap: 16px;
   margin-bottom: 36px;
   width: 100%;
-  max-width: 400px;
 }
 
 .primary-button {
@@ -448,6 +446,11 @@ md-filled-text-field *:not(.material-symbols-rounded) {
   border-radius: 12px;
   margin-bottom: 8px;
   transition: all 0.2s ease;
+  text-align: left;
+}
+
+.info md-list-item div[slot='headline'] {
+  text-align: left;
 }
 
 .info md-list-item:hover {
