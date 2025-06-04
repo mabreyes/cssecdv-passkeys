@@ -1,0 +1,16 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package.json and install dependencies
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Copy source code
+COPY . ./
+
+# Expose port
+EXPOSE 5173
+
+# Start the development server with proper host binding
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"] 
