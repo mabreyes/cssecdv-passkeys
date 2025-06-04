@@ -7,11 +7,25 @@ export class UIRenderer {
 
     app.innerHTML = `
       <div class="container">
-        <h1>🔐 Passkeys Login Demo</h1>
-        <div id="message" class="message"></div>
-        <div class="main-card">
-          ${isLoggedIn ? this.renderDashboard(username) : this.renderLogin()}
+        <div class="header">
+          <h1>🔐 Passkeys Login Demo</h1>
+          <a href="https://github.com/mabreyes/cssecdv-passkeys" target="_blank" rel="noopener noreferrer" class="github-link">
+            <span class="material-symbols-rounded">code</span>
+            View on GitHub
+          </a>
         </div>
+        <div id="message" class="message"></div>
+        <div class="cards-layout">
+          <div class="main-card">
+            ${isLoggedIn ? this.renderDashboard(username) : this.renderLogin()}
+          </div>
+          <div class="info-detail-card">
+            ${this.renderPasskeyInfo()}
+          </div>
+        </div>
+        <footer class="footer">
+          <p>Created by <strong>Marc Reyes</strong></p>
+        </footer>
       </div>
     `;
   }
@@ -74,6 +88,61 @@ export class UIRenderer {
           <span class="material-symbols-rounded" slot="icon">logout</span>
           Logout
         </md-outlined-button>
+      </div>
+    `;
+  }
+
+  private static renderPasskeyInfo(): string {
+    return `
+      <div class="passkey-info">
+        <h2>What are Passkeys?</h2>
+        
+        <div class="info-section">
+          <h3><span class="material-symbols-rounded">shield</span>Passwordless Authentication</h3>
+          <p>Passkeys replace passwords with cryptographic key pairs, eliminating the need to remember complex passwords or worry about password breaches.</p>
+        </div>
+
+        <div class="info-section">
+          <h3><span class="material-symbols-rounded">fingerprint</span>Biometric Security</h3>
+          <p>Use your device's built-in biometric sensors (Face ID, Touch ID, Windows Hello) or security keys for authentication. Your biometric data never leaves your device.</p>
+        </div>
+
+        <div class="info-section">
+          <h3><span class="material-symbols-rounded">sync</span>Cross-Platform Sync</h3>
+          <p>Passkeys sync across your devices through your platform's ecosystem (iCloud Keychain, Google Password Manager) making them available wherever you need them.</p>
+        </div>
+
+        <div class="info-section">
+          <h3><span class="material-symbols-rounded">block</span>Phishing Resistant</h3>
+          <p>Passkeys are bound to specific websites and cannot be tricked by phishing sites, providing superior protection against social engineering attacks.</p>
+        </div>
+
+        <div class="info-section">
+          <h3><span class="material-symbols-rounded">public</span>Industry Standard</h3>
+          <p>Built on WebAuthn and FIDO2 standards, passkeys are supported by major browsers and platforms including Apple, Google, Microsoft, and more.</p>
+        </div>
+
+        <div class="supported-platforms">
+          <h3>Supported Platforms</h3>
+          <div class="platform-grid">
+            <div class="platform-item">
+              <span class="material-symbols-rounded">phone_iphone</span>
+              <span>iOS 16+</span>
+            </div>
+            <div class="platform-item">
+              <span class="material-symbols-rounded">laptop_mac</span>
+              <span>macOS 13+</span>
+            </div>
+            <div class="platform-item">
+              <span class="material-symbols-rounded">android</span>
+              <span>Android 9+</span>
+            </div>
+            <div class="platform-item">
+              <span class="material-symbols-rounded">computer</span>
+              <span>Windows 10+</span>
+            </div>
+          </div>
+        </div>
       </div>
     `;
   }
