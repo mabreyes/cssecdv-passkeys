@@ -1,5 +1,16 @@
+import type { ValidationResult } from './ValidationService.js';
+
 export class UIRenderer {
-  static render(isLoggedIn: boolean, username: string): void {
+  static render(
+    isLoggedIn: boolean,
+    username: string,
+    loadingState?: {
+      isRegistering?: boolean;
+      isAuthenticating?: boolean;
+      validationState?: ValidationResult;
+      isValidating?: boolean;
+    }
+  ): void {
     const app = document.querySelector<HTMLDivElement>('#app');
     if (!app) {
       throw new Error('App container not found');
@@ -17,7 +28,7 @@ export class UIRenderer {
         <div id="message" class="message"></div>
         <div class="cards-layout">
           <div class="main-card">
-            ${isLoggedIn ? this.renderDashboard(username) : this.renderLogin()}
+            ${isLoggedIn ? this.renderDashboard(username) : this.renderLogin(loadingState)}
           </div>
           <div class="info-detail-card">
             ${this.renderPasskeyInfo()}
@@ -30,7 +41,16 @@ export class UIRenderer {
     `;
   }
 
-  private static renderLogin(): string {
+  private static renderLogin(loadingState?: {
+    isRegistering?: boolean;
+    isAuthenticating?: boolean;
+    validationState?: ValidationResult;
+    isValidating?: boolean;
+  }): string {
+    const isRegistering = loadingState?.isRegistering || false;
+    const isAuthenticating = loadingState?.isAuthenticating || false;
+    const isLoading = isRegistering || isAuthenticating;
+
     return `
       <div class="login-section">
         <h2>Welcome</h2>
@@ -39,16 +59,28 @@ export class UIRenderer {
         <div class="form-group">
           <md-filled-text-field
             id="username"
+            name="username-${Math.random().toString(36).substring(7)}"
             label="Username"
-            placeholder="Enter your username"
-            type="text">
+            placeholder="Enter your username (3-20 characters)"
+            type="text"
+            autocomplete="new-password"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            readonly
+            onfocus="this.removeAttribute('readonly')"
+            data-form-type="other"
+            ${isLoading ? 'disabled' : ''}>
           </md-filled-text-field>
         </div>
         
         <div class="button-group">
-          <md-filled-button id="register-btn" class="primary-button">
-            <span class="material-symbols-rounded" slot="icon">fingerprint</span>
-            Register with Passkey
+          <md-filled-button 
+            id="register-btn" 
+            class="primary-button" 
+            disabled>
+            <span class="material-symbols-rounded" slot="icon">${isRegistering ? 'hourglass_empty' : 'fingerprint'}</span>
+            ${isRegistering ? 'Creating Passkey...' : 'Register with Passkey'}
           </md-filled-button>
           
           <div class="separator">
@@ -61,27 +93,31 @@ export class UIRenderer {
             <p>I have an existing account</p>
           </div>
           
-          <md-outlined-button id="login-btn" class="secondary-button">
-            <span class="material-symbols-rounded" slot="icon">vpn_key</span>
-            Login with Passkey
+          <md-outlined-button id="login-btn" class="secondary-button" ${isLoading ? 'disabled' : ''}>
+            <span class="material-symbols-rounded" slot="icon">${isAuthenticating ? 'hourglass_empty' : 'vpn_key'}</span>
+            ${isAuthenticating ? 'Authenticating...' : 'Login with Passkey'}
           </md-outlined-button>
         </div>
         
         <div class="info-card">
           <div class="info">
-            <h3>How it works:</h3>
+            <h3>Username Requirements:</h3>
             <md-list>
               <md-list-item>
-                <span class="material-symbols-rounded" slot="start">add_circle</span>
-                <div slot="headline">Register: Create a new passkey for your account</div>
+                <span class="material-symbols-rounded" slot="start">rule</span>
+                <div slot="headline">3-20 characters long</div>
               </md-list-item>
               <md-list-item>
-                <span class="material-symbols-rounded" slot="start">login</span>
-                <div slot="headline">Login: Authenticate with any registered passkey on this device</div>
+                <span class="material-symbols-rounded" slot="start">abc</span>
+                <div slot="headline">Letters, numbers, underscores, and hyphens only</div>
               </md-list-item>
               <md-list-item>
-                <span class="material-symbols-rounded" slot="start">security</span>
-                <div slot="headline">Secure: Your biometric data never leaves your device</div>
+                <span class="material-symbols-rounded" slot="start">block</span>
+                <div slot="headline">Cannot start/end with special characters</div>
+              </md-list-item>
+              <md-list-item>
+                <span class="material-symbols-rounded" slot="start">group</span>
+                <div slot="headline">Must be unique (not already taken)</div>
               </md-list-item>
             </md-list>
           </div>

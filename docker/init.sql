@@ -12,12 +12,13 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS passkey_credentials (
     id VARCHAR(255) PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    raw_id BYTEA NOT NULL,
+    raw_id BYTEA NOT NULL UNIQUE,
     public_key BYTEA NOT NULL,
     rp_id VARCHAR(255) NOT NULL,
     counter INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    last_used_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    last_used_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_user_rp UNIQUE (user_id, rp_id)
 );
 
 -- Create indexes for better performance

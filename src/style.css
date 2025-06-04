@@ -828,10 +828,133 @@ md-filled-text-field *:not(.material-symbols-rounded) {
 .existing-account-text p {
   color: var(--md-sys-color-on-surface-variant);
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 400;
   margin: 0;
-  letter-spacing: 0.01em;
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
-    system-ui, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* Validation Feedback Styles */
+.validation-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  font-weight: 400;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slideInUp 0.2s ease-out;
+  border: 1px solid transparent;
+}
+
+.validation-feedback .material-symbols-rounded {
+  font-size: 18px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.validation-feedback.valid {
+  background: rgba(34, 197, 94, 0.1);
+  color: rgb(21, 128, 61);
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+.validation-feedback.valid .material-symbols-rounded {
+  color: rgb(34, 197, 94);
+}
+
+.validation-feedback.invalid {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+  border-color: rgba(186, 26, 26, 0.2);
+}
+
+.validation-feedback.invalid .material-symbols-rounded {
+  color: var(--md-sys-color-error);
+}
+
+.validation-feedback.validating {
+  background: rgba(79, 70, 229, 0.1);
+  color: rgb(67, 56, 202);
+  border-color: rgba(79, 70, 229, 0.2);
+}
+
+.validation-feedback.validating .material-symbols-rounded {
+  color: var(--md-sys-color-primary);
+  animation: spin 1s linear infinite;
+}
+
+.validation-feedback .errors {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.validation-feedback .error-item {
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+/* Dark theme adjustments for validation */
+@media (prefers-color-scheme: dark) {
+  .validation-feedback.valid {
+    background: rgba(34, 197, 94, 0.15);
+    color: rgb(74, 222, 128);
+    border-color: rgba(34, 197, 94, 0.25);
+  }
+
+  .validation-feedback.valid .material-symbols-rounded {
+    color: rgb(34, 197, 94);
+  }
+
+  .validation-feedback.validating {
+    background: rgba(129, 140, 248, 0.15);
+    color: rgb(129, 140, 248);
+    border-color: rgba(129, 140, 248, 0.25);
+  }
+}
+
+/* Spin animation for validating state */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Enhanced form field styling for validation states */
+.form-group md-filled-text-field[error] {
+  --md-filled-text-field-container-color: var(--md-sys-color-error-container);
+  --md-filled-text-field-label-text-color: var(--md-sys-color-error);
+  --md-filled-text-field-input-text-color: var(
+    --md-sys-color-on-error-container
+  );
+}
+
+/* Disabled button styling */
+md-filled-button[disabled] {
+  --md-filled-button-container-color: var(
+    --md-sys-color-surface-variant
+  ) !important;
+  --md-filled-button-label-text-color: var(
+    --md-sys-color-on-surface-variant
+  ) !important;
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+md-outlined-button[disabled] {
+  --md-outlined-button-outline-color: var(
+    --md-sys-color-outline-variant
+  ) !important;
+  --md-outlined-button-label-text-color: var(
+    --md-sys-color-on-surface-variant
+  ) !important;
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
 }
