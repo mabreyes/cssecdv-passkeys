@@ -1,287 +1,742 @@
 # 🔐 Passkeys Authentication Demo
 
-A modern, secure login demo using **Passkeys** (WebAuthn) for passwordless authentication built with Vite and TypeScript.
+A modern, secure, full-stack passkeys authentication system with real-time username validation, PostgreSQL persistence, and comprehensive Docker setup. Built with Vite, TypeScript, and Express.js.
 
-**Live Demo:** [https://passkeys.marcr.xyz](https://passkeys.marcr.xyz)
+**🌐 Live Demo:** [https://passkeys.marcr.xyz](https://passkeys.marcr.xyz)  
+**📝 Author:** Marc Reyes ([hi@marcr.xyz](mailto:hi@marcr.xyz))
 
 ## ✨ Features
 
-- 🔒 **Passwordless Authentication** - No passwords to remember or manage
-- 🔑 **Passkeys Support** - Uses WebAuthn API for secure biometric authentication
-- 📱 **Cross-Platform** - Works on devices with Face ID, Touch ID, Windows Hello, or security keys
-- 🎨 **Modern UI** - Beautiful, responsive design with smooth animations
-- ⚡ **Fast & Lightweight** - Built with Vite for optimal performance
-- 🔐 **Secure** - Biometric data never leaves your device
-- 🚀 **Production Ready** - Deployed on Render.com with proper security headers
+### 🔒 **Security & Authentication**
 
-## 🚀 Getting Started
+- **Passwordless Authentication** - No passwords to remember, store, or breach
+- **WebAuthn/FIDO2 Standard** - Industry-standard biometric authentication
+- **Phishing Resistant** - Passkeys are cryptographically bound to domains
+- **Device-Bound Security** - Private keys never leave your device
+- **Challenge-Response Protocol** - Protection against replay attacks
+
+### 🎯 **User Experience**
+
+- **Real-time Username Validation** - Instant feedback with availability checking
+- **Comprehensive Validation Rules** - Length, format, reserved names, and uniqueness
+- **Modern Material Design UI** - Beautiful, responsive interface
+- **Cross-Platform Support** - Works on iOS, Android, macOS, Windows
+- **Fast Performance** - Optimized with Vite and modern tooling
+
+### 🏗️ **Architecture & Development**
+
+- **Full-Stack Solution** - Frontend + Backend + Database
+- **PostgreSQL Persistence** - Secure server-side credential storage
+- **Docker Environment** - Complete development setup with one command
+- **TypeScript Throughout** - Type safety across the entire stack
+- **Production Ready** - Deployable with proper security headers
+
+## 🚀 Quick Start
+
+### Option 1: Docker (Recommended)
+
+**Complete development environment with database persistence:**
+
+```bash
+# Clone the repository
+git clone https://github.com/mabreyes/cssecdv-passkeys
+cd cssecdv-passkeys
+
+# Start all services (Frontend + Backend + Database)
+docker-compose up -d
+
+# Wait for services to initialize (~30 seconds)
+docker-compose logs -f
+
+# Open your browser
+open http://localhost:5173
+```
+
+### Option 2: Static Frontend Only
+
+**For testing the UI with localStorage:**
+
+```bash
+# Clone and install
+git clone https://github.com/mabreyes/cssecdv-passkeys
+cd cssecdv-passkeys
+npm install
+
+# Start development server
+npm run dev
+
+# Open your browser
+open http://localhost:5173
+```
+
+## 🏗️ Architecture Overview
+
+### System Components
+
+```mermaid
+graph TB
+    subgraph "Client Device"
+        Frontend["`**Frontend**
+        Port: 5173
+        • Vite + TypeScript
+        • Material Design UI
+        • Real-time validation
+        • WebAuthn client`"]
+
+        Browser["`**Browser**
+        • WebAuthn API
+        • Biometric sensors
+        • Secure storage`"]
+    end
+
+    subgraph "Server Infrastructure"
+        Backend["`**Backend API**
+        Port: 3000
+        • Express.js
+        • WebAuthn server
+        • Rate limiting
+        • CORS & Helmet`"]
+
+        Database["`**PostgreSQL**
+        Port: 5432
+        • User accounts
+        • Passkey credentials
+        • Data persistence
+        • Unique constraints`"]
+    end
+
+    Frontend <-->|HTTPS/API Calls| Backend
+    Backend <-->|SQL Queries| Database
+    Frontend -.->|WebAuthn| Browser
+
+    style Frontend fill:#e1f5fe
+    style Backend fill:#f3e5f5
+    style Database fill:#e8f5e8
+    style Browser fill:#fff3e0
+```
+
+### Frontend Architecture
+
+```mermaid
+graph TD
+    subgraph "Frontend Services"
+        AuthService["`**AuthService**
+        • WebAuthn credential management
+        • Registration & authentication
+        • Challenge handling`"]
+
+        ValidationService["`**ValidationService**
+        • Real-time username validation
+        • Availability checking
+        • Rules enforcement`"]
+
+        UIRenderer["`**UIRenderer**
+        • Material Design components
+        • Dynamic UI updates
+        • State rendering`"]
+
+        EventHandler["`**EventHandler**
+        • User interactions
+        • Input handling
+        • Button clicks`"]
+
+        MessageService["`**MessageService**
+        • Toast notifications
+        • Error messages
+        • Success feedback`"]
+
+        StateManager["`**StateManager**
+        • Session persistence
+        • LocalStorage management
+        • Login state`"]
+    end
+
+    subgraph "Main Application"
+        PasskeysApp["`**PasskeysApp**
+        Main orchestrator`"]
+    end
+
+    PasskeysApp --> AuthService
+    PasskeysApp --> ValidationService
+    PasskeysApp --> UIRenderer
+    PasskeysApp --> EventHandler
+    PasskeysApp --> MessageService
+    PasskeysApp --> StateManager
+
+    EventHandler --> ValidationService
+    ValidationService --> UIRenderer
+    AuthService --> MessageService
+
+    style PasskeysApp fill:#ffeb3b
+    style AuthService fill:#4caf50
+    style ValidationService fill:#2196f3
+    style UIRenderer fill:#9c27b0
+```
+
+### API Flow Diagram
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant B as Backend
+    participant D as Database
+    participant A as Authenticator
+
+    Note over U,A: Registration Flow
+    U->>F: Enter username
+    F->>B: POST /api/check-username
+    B->>D: Query username availability
+    D-->>B: Available/Taken
+    B-->>F: Validation result
+    F-->>U: Real-time feedback
+
+    U->>F: Click "Register"
+    F->>B: POST /api/register/begin
+    B->>D: Create/get user
+    B-->>F: Challenge + options
+    F->>A: navigator.credentials.create()
+    A-->>F: New credential
+    F->>B: POST /api/register/complete
+    B->>D: Store credential
+    B-->>F: Success
+    F-->>U: Login automatically
+
+    Note over U,A: Authentication Flow
+    U->>F: Click "Login"
+    F->>B: POST /api/authenticate/begin
+    B-->>F: Challenge + options
+    F->>A: navigator.credentials.get()
+    A-->>F: Signed assertion
+    F->>B: POST /api/authenticate/complete
+    B->>D: Verify credential
+    B-->>F: Success + user info
+    F-->>U: Welcome back!
+```
+
+### Data Flow Architecture
+
+```mermaid
+flowchart LR
+    subgraph "Input Layer"
+        UI[User Input]
+        Events[DOM Events]
+    end
+
+    subgraph "Validation Layer"
+        RealTime[Real-time Validation]
+        Debounce[Debounced API Calls]
+        Rules[Validation Rules]
+    end
+
+    subgraph "Authentication Layer"
+        WebAuthn[WebAuthn API]
+        Challenges[Challenge Management]
+        Crypto[Cryptographic Operations]
+    end
+
+    subgraph "Persistence Layer"
+        State[State Management]
+        LocalStore[Local Storage]
+        Database[(PostgreSQL)]
+    end
+
+    UI --> Events
+    Events --> RealTime
+    RealTime --> Debounce
+    Debounce --> Rules
+
+    Events --> WebAuthn
+    WebAuthn --> Challenges
+    Challenges --> Crypto
+
+    RealTime --> State
+    WebAuthn --> State
+    State --> LocalStore
+    Challenges --> Database
+
+    style UI fill:#e3f2fd
+    style WebAuthn fill:#f3e5f5
+    style Database fill:#e8f5e8
+```
+
+### Backend API Endpoints
+
+```mermaid
+graph LR
+    subgraph "Authentication APIs"
+        RegBegin["`**POST** /api/register/begin
+        Initialize passkey registration`"]
+
+        RegComplete["`**POST** /api/register/complete
+        Complete passkey registration`"]
+
+        AuthBegin["`**POST** /api/authenticate/begin
+        Initialize passkey authentication`"]
+
+        AuthComplete["`**POST** /api/authenticate/complete
+        Complete passkey authentication`"]
+    end
+
+    subgraph "Validation APIs"
+        CheckUser["`**POST** /api/check-username
+        Real-time username validation`"]
+    end
+
+    subgraph "Utility APIs"
+        Health["`**GET** /health
+        Service health check`"]
+
+        UserCreds["`**GET** /api/users/:user/creds
+        List user credentials (debug)`"]
+    end
+
+    subgraph "Database Tables"
+        Users[(users)]
+        Credentials[(passkey_credentials)]
+    end
+
+    RegBegin --> Users
+    RegComplete --> Credentials
+    AuthBegin --> Credentials
+    AuthComplete --> Credentials
+    CheckUser --> Users
+    UserCreds --> Credentials
+
+    style RegBegin fill:#4caf50
+    style RegComplete fill:#4caf50
+    style AuthBegin fill:#2196f3
+    style AuthComplete fill:#2196f3
+    style CheckUser fill:#ff9800
+```
+
+## 🛠️ Development Setup
 
 ### Prerequisites
 
-- Node.js (version 18 or higher)
-- npm (version 8 or higher)
-- A modern browser that supports WebAuthn
-- A device with biometric authentication (Face ID, Touch ID, Windows Hello) or a security key
-
-### Installation
-
-1. **Clone the repository:**
-
-   ```bash
-   git clone https://github.com/mabreyes/cssecdv-passkeys
-   cd cssecdv-passkeys
-   ```
-
-2. **Install dependencies:**
-
-   ```bash
-   npm install
-   ```
-
-3. **Start the development server:**
-
-   ```bash
-   npm run dev
-   ```
-
-4. **Open your browser** and navigate to `http://localhost:5173`
-
-## 🔧 How to Use
-
-### First Time Setup (Registration)
-
-1. **Enter a username** in the input field
-2. **Click "Register with Passkey"**
-3. **Follow your browser's prompts** to create a passkey using:
-   - Face ID or Touch ID (on supported devices)
-   - Windows Hello (on Windows)
-   - Security key (USB/NFC)
-4. **You're automatically logged in** after successful registration
-
-### Returning Users (Login)
-
-1. **Click "Login with Passkey"**
-2. **Authenticate** using your registered biometric method
-3. **Welcome back!** You're now logged in
-
-### Logout
-
-- **Click "Logout"** when you're done to end your session
-
-## 🛠️ Technical Details
-
-### WebAuthn API Usage
-
-This demo implements the Web Authentication API (WebAuthn) with the following features:
-
-- **Credential Creation** - Registers new passkeys with your device
-- **Credential Authentication** - Verifies identity using stored passkeys
-- **Platform Authenticators** - Prefers built-in biometric authentication
-- **User Verification** - Requires biometric confirmation for security
-- **Dynamic RP ID** - Automatically adapts to localhost and production domains
-
-### Security Features
-
-- ✅ **No Password Storage** - Credentials are stored securely on your device
-- ✅ **Phishing Resistant** - Passkeys are bound to specific domains
-- ✅ **Replay Attack Protection** - Each authentication uses unique challenges
-- ✅ **Device-Bound Security** - Private keys never leave your device
-- ✅ **Security Headers** - Proper CSP and security headers in production
-- ✅ **HTTPS Required** - WebAuthn requires secure connections
-
-### Browser Support
-
-This demo works on modern browsers that support WebAuthn:
-
-- ✅ **Chrome/Edge** 67+ (Windows Hello, security keys)
-- ✅ **Safari** 14+ (Face ID, Touch ID on macOS/iOS)
-- ✅ **Firefox** 60+ (security keys, Windows Hello)
-
-## 📁 Project Structure
-
-```
-src/
-├── main.ts          # Main application logic and WebAuthn implementation
-├── style.css        # Modern, responsive styling
-└── vite-env.d.ts    # TypeScript environment definitions
-
-public/              # Static assets
-├── _redirects       # Render.com routing configuration
-└── vite.svg         # Vite logo
-
-.husky/              # Git hooks
-├── pre-commit       # Runs lint-staged before commits
-└── pre-push         # Runs all checks before push
-
-index.html          # HTML entry point
-package.json        # Dependencies and scripts
-tsconfig.json       # TypeScript configuration
-render.yaml         # Render.com deployment configuration
-.eslintrc.json      # ESLint configuration
-.prettierrc         # Prettier configuration
-```
-
-## 🔍 Code Highlights
-
-### Passkey Registration
-
-```typescript
-const credential = await navigator.credentials.create({
-  publicKey: {
-    challenge: cryptoChallenge,
-    rp: { name: 'Passkeys Demo', id: this.getRpId() },
-    user: { id: userId, name: username, displayName: username },
-    pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
-    authenticatorSelection: {
-      authenticatorAttachment: 'platform',
-      userVerification: 'required',
-    },
-  },
-});
-```
-
-### Passkey Authentication
-
-```typescript
-const credential = await navigator.credentials.get({
-  publicKey: {
-    challenge: cryptoChallenge,
-    allowCredentials: [{ id: credentialId, type: 'public-key' }],
-    userVerification: 'required',
-  },
-});
-```
-
-## 🚀 Building for Production
-
-```bash
-# Run all checks
-npm run check-all
-
-# Build the app
-npm run build
-
-# Preview the production build
-npm run preview
-
-# Clean build
-npm run build:clean
-```
-
-## 🌐 Deployment on Render.com
-
-This project is configured for easy deployment on Render.com:
-
-### Automatic Deployment
-
-1. **Fork/Clone** this repository
-2. **Connect to Render.com** and create a new Static Site
-3. **Use these settings:**
-   - **Build Command:** `npm ci && npm run build`
-   - **Publish Directory:** `./dist`
-4. **Deploy!** The `render.yaml` file will handle the rest
-
-### Manual Deployment
-
-```bash
-# Build for production
-npm run build
-
-# The dist/ folder contains your deployable assets
-```
+- **Node.js** 18+ and **npm** 8+
+- **Docker & Docker Compose** (for full stack)
+- **Modern browser** with WebAuthn support
+- **Biometric device** (Face ID, Touch ID, Windows Hello) or security key
 
 ### Environment Configuration
 
-The app automatically adapts to different environments:
+The application automatically detects and adapts to different environments:
 
-- **Development:** Uses `localhost` for WebAuthn RP ID
-- **Production:** Uses the actual domain for WebAuthn RP ID
-
-## 🔧 Development Workflow
-
-### Pre-commit Hooks
-
-This project uses Husky for Git hooks:
-
-- **Pre-commit:** Runs ESLint and Prettier on staged files
-- **Pre-push:** Runs type checking, linting, and format checking
-
-### Available Scripts
-
-```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-npm run lint         # Run ESLint
-npm run lint:fix     # Fix ESLint issues
-npm run format       # Format code with Prettier
-npm run format:check # Check code formatting
-npm run type-check   # Run TypeScript type checking
-npm run check-all    # Run all checks
+```javascript
+// Automatic environment detection
+const isDevelopment = window.location.hostname === 'localhost';
+const rpId = isDevelopment ? 'localhost' : window.location.hostname;
+const apiBase = isDevelopment
+  ? 'http://localhost:3000'
+  : window.location.origin;
 ```
 
-## 🤝 Contributing
+### Database Schema
 
-Feel free to contribute by:
+**Users Table:**
 
-1. 🍴 Forking the repository
-2. 🌿 Creating a feature branch
-3. 💻 Making your improvements
-4. 📝 Adding tests if applicable
-5. ✅ Ensuring all checks pass (`npm run check-all`)
-6. 🔄 Submitting a pull request
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+```
 
-All code is automatically checked for:
+**Passkey Credentials Table:**
 
-- ✅ TypeScript type safety
-- ✅ ESLint rules compliance
-- ✅ Prettier formatting
-- ✅ Git commit hooks
+```sql
+CREATE TABLE passkey_credentials (
+    id VARCHAR(255) PRIMARY KEY,                    -- Base64URL credential ID
+    user_id INTEGER NOT NULL REFERENCES users(id),  -- User reference
+    raw_id BYTEA NOT NULL UNIQUE,                    -- Raw credential bytes
+    public_key BYTEA NOT NULL,                       -- Public key for verification
+    rp_id VARCHAR(255) NOT NULL,                     -- Relying party ID
+    counter INTEGER DEFAULT 0,                       -- Signature counter
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_used_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_user_rp UNIQUE (user_id, rp_id) -- Prevent duplicates
+);
+```
 
-## 📚 Learn More
+## 🔧 Usage Guide
 
-- [WebAuthn Guide](https://webauthn.guide/) - Comprehensive WebAuthn documentation
-- [Passkeys.dev](https://passkeys.dev/) - Resources for implementing passkeys
-- [Web Authentication API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API) - MDN documentation
-- [Render.com Docs](https://render.com/docs) - Deployment documentation
+### Registration Flow
 
-## ⚠️ Important Notes
+1. **Enter Username**
 
-- This is a **demo application** for learning purposes
-- In production, you should:
-  - Implement proper server-side validation
-  - Store credentials securely on the server
-  - Add proper error handling and fallbacks
-  - Implement additional security measures
-  - Use a proper database instead of localStorage
+   - Must be 3-20 characters
+   - Letters, numbers, underscores, hyphens only
+   - Cannot start/end with special characters
+   - Real-time availability checking
+
+2. **Create Passkey**
+
+   - Click "Register with Passkey"
+   - Follow browser prompts for biometric authentication
+   - Passkey is securely stored on your device
+
+3. **Automatic Login**
+   - Successfully registered users are automatically logged in
+
+### Authentication Flow
+
+1. **Start Login**
+
+   - Click "Login with Passkey" (no username needed)
+   - Browser presents available passkeys
+
+2. **Authenticate**
+   - Select your passkey
+   - Complete biometric verification
+   - Automatic login on success
+
+### Username Validation Rules
+
+```typescript
+// Real-time validation includes:
+✅ Length: 3-20 characters
+✅ Pattern: /^[a-zA-Z0-9_-]+$/
+✅ No consecutive special chars: no '__' or '--'
+✅ No leading/trailing special chars
+✅ Not numbers only
+✅ Not reserved names (admin, root, api, etc.)
+✅ Availability check against database
+```
+
+## 📝 Available Scripts
+
+### Frontend Scripts
+
+```bash
+npm run dev              # Start development server
+npm run build            # Build for production
+npm run build:clean      # Clean build (removes dist/)
+npm run preview          # Preview production build
+npm run lint             # Run ESLint
+npm run lint:fix         # Fix ESLint issues
+npm run format           # Format with Prettier
+npm run format:check     # Check formatting
+npm run type-check       # TypeScript type checking
+npm run check-all        # Run all quality checks
+```
+
+### Docker Scripts
+
+```bash
+docker-compose up -d              # Start all services
+docker-compose down               # Stop all services
+docker-compose down -v            # Remove everything including data
+docker-compose logs -f            # Follow all logs
+docker-compose logs -f backend    # Backend logs only
+docker-compose restart backend    # Restart backend service
+docker-compose up -d --build      # Rebuild and start
+```
+
+### Database Management
+
+```bash
+# Connect to PostgreSQL
+docker exec -it passkeys-postgres psql -U passkeys_user -d passkeys_db
+
+# Clear all data (keep tables)
+docker exec -i passkeys-postgres psql -U passkeys_user -d passkeys_db -c "DELETE FROM passkey_credentials; DELETE FROM users;"
+
+# Check data counts
+docker exec -i passkeys-postgres psql -U passkeys_user -d passkeys_db -c "SELECT COUNT(*) FROM users; SELECT COUNT(*) FROM passkey_credentials;"
+
+# View users and credentials
+docker exec -i passkeys-postgres psql -U passkeys_user -d passkeys_db -c "SELECT u.username, pc.id as cred_id, pc.created_at FROM users u LEFT JOIN passkey_credentials pc ON u.id = pc.user_id;"
+```
+
+## 🚀 Deployment
+
+### Static Deployment (Render/Netlify/Vercel)
+
+```bash
+# Build the frontend
+npm run build
+
+# Deploy the dist/ folder
+# Configure redirects for SPA routing
+```
+
+**Render.com Configuration:**
+
+```yaml
+# render.yaml
+services:
+  - type: web
+    name: passkeys-frontend
+    env: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+```
+
+### Full-Stack Deployment
+
+For production deployment with backend:
+
+1. **Environment Variables:**
+
+```bash
+DATABASE_URL=postgresql://user:pass@host:port/db
+CORS_ORIGIN=https://yourdomain.com
+RP_ID=yourdomain.com
+RP_NAME=Your App Name
+EXPECTED_ORIGIN=https://yourdomain.com
+NODE_ENV=production
+```
+
+2. **Security Considerations:**
+
+- Use HTTPS (required for WebAuthn)
+- Implement proper rate limiting
+- Use Redis for challenge storage
+- Add comprehensive logging
+- Set up monitoring and alerts
+
+## 🧪 Testing & Quality
+
+### Pre-commit Hooks (Husky)
+
+Automatic quality checks on every commit:
+
+```bash
+# Pre-commit: Runs on staged files
+- TypeScript type checking
+- ESLint with auto-fix
+- Prettier formatting
+
+# Pre-push: Full project validation
+- Complete type checking
+- Linting without auto-fix
+- Format verification
+```
+
+### Browser Compatibility
+
+| Browser | Version | Support Level |
+| ------- | ------- | ------------- |
+| Chrome  | 67+     | ✅ Full       |
+| Safari  | 14+     | ✅ Full       |
+| Firefox | 60+     | ✅ Full       |
+| Edge    | 18+     | ✅ Full       |
+
+### Device Support
+
+| Platform | Authentication Methods |
+| -------- | ---------------------- |
+| iOS      | Face ID, Touch ID      |
+| Android  | Fingerprint, Face      |
+| macOS    | Touch ID, Face ID      |
+| Windows  | Windows Hello, PIN     |
+| Linux    | Security Keys          |
 
 ## 🐛 Troubleshooting
 
-### "WebAuthn is not supported"
+### Common Issues
 
-- Use a modern browser (Chrome 67+, Safari 14+, Firefox 60+)
-- Ensure you're on HTTPS or localhost
+**"WebAuthn not supported"**
 
-### Registration/Login Fails
+```bash
+# Solutions:
+- Use modern browser (Chrome 67+, Safari 14+, Firefox 60+)
+- Ensure HTTPS in production or localhost in development
+- Check if biometric authentication is set up on device
+```
 
-- Check that your device supports biometric authentication
-- Try using a security key as an alternative
-- Clear browser data and try again
-- Ensure you're on a secure connection (HTTPS)
+**Registration/Authentication fails**
 
-### No Passkey Found
+```bash
+# Debugging steps:
+1. Check browser console for detailed errors
+2. Verify device has biometric authentication enabled
+3. Try incognito/private browsing mode
+4. Clear browser data and retry
+5. Check backend logs: docker-compose logs backend
+```
 
-- Register first before attempting to login
-- Check if you're using the same browser and device
-- Passkeys are domain-specific - localhost vs production are different
+**Database connection issues**
 
-### Deployment Issues
+```bash
+# Check PostgreSQL status
+docker-compose ps postgres
+docker-compose logs postgres
 
-- Ensure Node.js version is 18+
-- Check that build command completes successfully
-- Verify `dist/` folder is created after build
+# Restart database
+docker-compose restart postgres
+
+# Reset database completely
+docker-compose down -v && docker-compose up -d
+```
+
+**Username validation not working**
+
+```bash
+# Check backend API
+curl http://localhost:3000/api/check-username \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser"}'
+
+# Expected response:
+{"available":true,"username":"testuser","errors":[]}
+```
+
+### Debug Mode
+
+Enable detailed logging by setting environment variables:
+
+```bash
+# Frontend debug (browser console)
+localStorage.setItem('debug', 'passkeys:*');
+
+# Backend debug
+DEBUG=passkeys:* docker-compose up -d
+```
+
+## 📚 Technical Deep Dive
+
+### WebAuthn Implementation
+
+```typescript
+// Registration Process
+const publicKeyCredentialCreationOptions = {
+  challenge: cryptoRandomChallenge,
+  rp: { name: 'Passkeys Demo', id: rpId },
+  user: { id: userIdBytes, name: username, displayName: username },
+  pubKeyCredParams: [{ alg: -7, type: 'public-key' }], // ES256
+  authenticatorSelection: {
+    authenticatorAttachment: 'platform', // Prefer built-in authenticators
+    userVerification: 'required', // Require biometric verification
+    residentKey: 'preferred', // Support discoverable credentials
+  },
+  attestation: 'none', // No attestation required
+};
+```
+
+### Security Features
+
+- **Challenge-Response Authentication** - Unique challenges prevent replay attacks
+- **Origin Binding** - Credentials are bound to specific domains
+- **User Verification** - Biometric confirmation required for each use
+- **Credential Isolation** - Each site gets unique credentials
+- **Device Security** - Private keys protected by hardware security modules
+
+### Performance Optimizations
+
+- **Debounced Validation** - Username availability checks after 500ms delay
+- **Efficient Re-rendering** - Only updates specific UI components, not entire DOM
+- **Lazy Loading** - Services loaded on demand
+- **Optimized Builds** - Tree shaking and code splitting with Vite
+
+## 🤝 Contributing
+
+### Development Workflow
+
+1. **Fork and Clone**
+
+   ```bash
+   git clone https://github.com/yourusername/cssecdv-passkeys
+   cd cssecdv-passkeys
+   ```
+
+2. **Create Feature Branch**
+
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+3. **Development**
+
+   ```bash
+   # Start development environment
+   docker-compose up -d
+
+   # Make your changes
+   # Tests will run automatically via git hooks
+   ```
+
+4. **Quality Checks**
+
+   ```bash
+   npm run check-all
+   ```
+
+5. **Submit PR**
+   - Ensure all checks pass
+   - Add tests for new features
+   - Update documentation if needed
+
+### Code Style
+
+- **TypeScript** for type safety
+- **ESLint** for code quality
+- **Prettier** for formatting
+- **Conventional Commits** for clear history
+
+## 📖 Learning Resources
+
+### WebAuthn & Passkeys
+
+- [WebAuthn Guide](https://webauthn.guide/) - Comprehensive guide
+- [Passkeys.dev](https://passkeys.dev/) - Implementation resources
+- [MDN WebAuthn API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API)
+- [FIDO Alliance](https://fidoalliance.org/) - Standards organization
+
+### Libraries Used
+
+- [SimpleWebAuthn](https://simplewebauthn.dev/) - WebAuthn implementation
+- [Material Web Components](https://material-web.dev/) - UI components
+- [Vite](https://vitejs.dev/) - Build tool and dev server
+- [Express.js](https://expressjs.com/) - Backend framework
+
+## ⚠️ Security Notes
+
+### Development vs Production
+
+**Development:**
+
+- Uses hardcoded database credentials
+- No SSL/TLS required (localhost exception)
+- Challenges stored in memory
+- Basic rate limiting
+
+**Production Requirements:**
+
+- Environment-based configuration
+- HTTPS mandatory for WebAuthn
+- Redis/database for challenge storage
+- Comprehensive rate limiting
+- Security headers and CSP
+- Input validation and sanitization
+- Proper error handling
+- Audit logging
+
+### Data Privacy
+
+- **No biometric data storage** - Biometrics never leave the device
+- **No password storage** - System is completely passwordless
+- **Minimal user data** - Only username and credential metadata stored
+- **Cryptographic security** - All authentication uses public key cryptography
+
+## 📄 License & Credits
+
+**MIT License** - See LICENSE file for details
+
+**Built with ❤️ by [Marc Reyes](mailto:hi@marcr.xyz)**
+
+### Acknowledgments
+
+- WebAuthn working group for the standard
+- SimpleWebAuthn team for the excellent library
+- Material Design team for the components
+- Vite team for the amazing build tool
 
 ---
 
-**Built with ❤️ by Marc Reyes <hi@marcr.xyz>**  
-**Using Vite, TypeScript, and WebAuthn**
+**🌟 Star this project if you found it helpful!**  
+**🐛 Report issues on [GitHub Issues](https://github.com/mabreyes/cssecdv-passkeys/issues)**  
+**💬 Questions? Reach out at [hi@marcr.xyz](mailto:hi@marcr.xyz)**

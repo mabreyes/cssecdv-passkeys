@@ -22,7 +22,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile.backend
+      dockerfile: docker/Dockerfile.backend
     container_name: passkeys-backend
     environment:
       NODE_ENV: development
@@ -42,7 +42,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.frontend
+      dockerfile: docker/Dockerfile.frontend
     container_name: passkeys-frontend
     environment:
       VITE_API_BASE_URL: http://localhost:3000
