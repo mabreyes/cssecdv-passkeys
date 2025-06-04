@@ -50,6 +50,17 @@ export class UIRenderer {
             <span class="material-symbols-rounded" slot="icon">fingerprint</span>
             Register with Passkey
           </md-filled-button>
+          
+          <div class="separator">
+            <div class="separator-line"></div>
+            <span class="separator-text">OR</span>
+            <div class="separator-line"></div>
+          </div>
+          
+          <div class="existing-account-text">
+            <p>I have an existing account</p>
+          </div>
+          
           <md-outlined-button id="login-btn" class="secondary-button">
             <span class="material-symbols-rounded" slot="icon">vpn_key</span>
             Login with Passkey

@@ -371,6 +371,30 @@ md-filled-text-field *:not(.material-symbols-rounded) {
   width: 100%;
 }
 
+.separator {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 12px 0;
+}
+
+.separator-line {
+  flex: 1;
+  height: 1px;
+  background: var(--md-sys-color-outline-variant);
+}
+
+.separator-text {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', 'Roboto', sans-serif;
+}
+
 .primary-button {
   width: 100%;
   height: 56px;
@@ -508,24 +532,10 @@ md-filled-text-field *:not(.material-symbols-rounded) {
   overflow: hidden;
 }
 
-.message::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  transition: all 0.3s ease;
-}
-
 .message.success {
   background: linear-gradient(135deg, #e8f5e8, #f0fdf4);
   color: #166534;
   border-color: #bbf7d0;
-}
-
-.message.success::before {
-  background: linear-gradient(90deg, #10b981, #059669);
 }
 
 .message.error {
@@ -534,22 +544,10 @@ md-filled-text-field *:not(.material-symbols-rounded) {
   border-color: var(--md-sys-color-error);
 }
 
-.message.error::before {
-  background: var(--md-sys-color-error);
-}
-
 .message.info {
   background: linear-gradient(135deg, #eff6ff, #f0f9ff);
   color: var(--md-sys-color-primary);
   border-color: #dbeafe;
-}
-
-.message.info::before {
-  background: linear-gradient(
-    90deg,
-    var(--md-sys-color-primary),
-    var(--md-sys-color-tertiary)
-  );
 }
 
 .message:empty {
@@ -820,4 +818,20 @@ md-filled-text-field *:not(.material-symbols-rounded) {
 
 .github-link .material-symbols-rounded {
   font-size: 18px;
+}
+
+.existing-account-text {
+  text-align: center;
+  margin: 8px 0;
+}
+
+.existing-account-text p {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: 0.01em;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    system-ui, 'Segoe UI', 'Roboto', sans-serif;
 }
