@@ -449,14 +449,14 @@ export class PasskeysApp {
       // After a short delay, show additional guidance
       setTimeout(() => {
         MessageService.show(
-          "💡 Tip: Passkeys are device-specific. If you registered on a different device, you'll need to register again on this device.",
+          '<span class="material-symbols-rounded tip-icon">lightbulb</span> Tip: Passkeys are device-specific. If you registered on a different device, you\'ll need to register again on this device.',
           'info'
         );
       }, 3000);
     } else if (errorMessage.includes('cancelled')) {
       setTimeout(() => {
         MessageService.show(
-          '💡 Tip: Make sure to complete the biometric verification (Face ID, Touch ID, Windows Hello) when prompted.',
+          '<span class="material-symbols-rounded tip-icon">lightbulb</span> Tip: Make sure to complete the biometric verification (Face ID, Touch ID, Windows Hello) when prompted.',
           'info'
         );
       }, 3000);

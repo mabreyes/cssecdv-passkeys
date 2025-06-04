@@ -193,6 +193,26 @@ h1 {
   margin-bottom: 0;
   letter-spacing: -0.02em;
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-icon {
+  font-size: 2.5rem !important;
+  background: linear-gradient(
+    135deg,
+    var(--md-sys-color-primary) 0%,
+    var(--md-sys-color-tertiary) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-variation-settings:
+    'FILL' 1,
+    'wght' 500,
+    'GRAD' 0,
+    'opsz' 40;
 }
 
 .main-card {
@@ -505,6 +525,35 @@ md-filled-text-field *:not(.material-symbols-rounded) {
   font-weight: 500;
   margin-bottom: 0;
   letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.celebration-icon {
+  font-size: 2rem !important;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-variation-settings:
+    'FILL' 1,
+    'wght' 500,
+    'GRAD' 0,
+    'opsz' 24;
+  animation: celebration-bounce 2s ease-in-out infinite;
+}
+
+@keyframes celebration-bounce {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
 }
 
 .dashboard p {
@@ -1044,4 +1093,17 @@ md-outlined-button[disabled] {
   .message.info .message-progress-bar {
     background: rgba(59, 130, 246, 0.9);
   }
+}
+
+/* Tip icon styling for messages */
+.tip-icon {
+  font-size: 16px !important;
+  color: var(--md-sys-color-primary);
+  vertical-align: text-top;
+  margin-right: 4px;
+  font-variation-settings:
+    'FILL' 1,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 20;
 }

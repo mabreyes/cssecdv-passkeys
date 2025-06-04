@@ -2,4 +2,4 @@
 . "$(dirname -- "$0")/_/husky.sh"
 
 # Light check on push since comprehensive checks run on commit
-echo "✅ Pushing to remote (checks already passed on commit)"
+echo "[PUSH] Pushing to remote (checks already passed on commit)"

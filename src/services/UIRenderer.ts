@@ -19,7 +19,10 @@ export class UIRenderer {
     app.innerHTML = `
       <div class="container">
         <div class="header">
-          <h1>🔐 Passkeys Login Demo</h1>
+          <h1>
+            <span class="material-symbols-rounded header-icon">passkey</span>
+            Passkeys Login Demo
+          </h1>
           <a href="https://github.com/mabreyes/cssecdv-passkeys" target="_blank" rel="noopener noreferrer" class="github-link">
             <span class="material-symbols-rounded">code</span>
             View on GitHub
@@ -134,7 +137,10 @@ export class UIRenderer {
   private static renderDashboard(username: string): string {
     return `
       <div class="dashboard">
-        <h2>Welcome back, ${username}! 🎉</h2>
+        <h2>
+          Welcome back, ${username}!
+          <span class="material-symbols-rounded celebration-icon">celebration</span>
+        </h2>
         <p>You are successfully logged in with your passkey.</p>
         <md-outlined-button 
           id="logout-btn" 

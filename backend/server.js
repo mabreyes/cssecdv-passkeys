@@ -636,9 +636,9 @@ app.use((req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Passkeys backend server running on port ${PORT}`);
-  console.log(`📊 Database: ${DATABASE_URL ? 'Connected' : 'Not configured'}`);
-  console.log(`🌐 CORS Origin: ${CORS_ORIGIN}`);
+  console.log(`[SERVER] Passkeys backend server running on port ${PORT}`);
+  console.log(`[DATABASE] ${DATABASE_URL ? 'Connected' : 'Not configured'}`);
+  console.log(`[CORS] Origin: ${CORS_ORIGIN}`);
 });
 
 // Graceful shutdown

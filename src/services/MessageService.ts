@@ -4,6 +4,7 @@ export class MessageService {
   private static readonly MESSAGE_DURATION = 10000; // 10 seconds
   private static readonly FADE_DURATION = 500; // 500ms fade
   private static currentTimeout: number | null = null;
+  private static clickHandler: ((event: Event) => void) | null = null;
 
   static show(text: string, type: MessageType): void {
     const messageEl = document.querySelector('#message') as HTMLElement;
@@ -14,8 +15,13 @@ export class MessageService {
         this.currentTimeout = null;
       }
 
-      // Set message content and type
-      messageEl.textContent = text;
+      // Remove existing click handler
+      if (this.clickHandler) {
+        messageEl.removeEventListener('click', this.clickHandler);
+      }
+
+      // Set message content and type - support HTML content
+      messageEl.innerHTML = text;
       messageEl.className = `message ${type}`;
 
       // Ensure message is visible (remove any fade-out class)
@@ -61,9 +67,10 @@ export class MessageService {
 
   private static addClickToDismiss(messageEl: HTMLElement): void {
     // Add click handler directly
-    messageEl.addEventListener('click', () => {
+    this.clickHandler = () => {
       this.hide();
-    });
+    };
+    messageEl.addEventListener('click', this.clickHandler);
 
     // Add visual hint for clickability
     messageEl.style.cursor = 'pointer';
