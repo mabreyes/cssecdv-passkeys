@@ -1,0 +1,34 @@
+{
+  "name": "passkeys-backend",
+  "version": "1.0.0",
+  "description": "Backend API for passkeys authentication with PostgreSQL persistence",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "pg": "^8.11.3",
+    "dotenv": "^16.3.1",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "@simplewebauthn/server": "^10.0.0",
+    "base64url": "^3.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "passkeys",
+    "webauthn",
+    "express",
+    "postgresql",
+    "authentication"
+  ],
+  "author": "Marc Reyes",
+  "license": "MIT"
+}

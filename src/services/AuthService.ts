@@ -1,3 +1,8 @@
+import {
+  startRegistration,
+  startAuthentication,
+} from '@simplewebauthn/browser';
+
 export interface CredentialData {
   id: string;
   rawId: number[];
@@ -6,7 +11,8 @@ export interface CredentialData {
 }
 
 export class AuthService {
-  private static readonly CREDENTIAL_STORAGE_KEY = 'passkey_credential';
+  private static readonly API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
   static checkSupport(): boolean {
     return !!window.PublicKeyCredential;
@@ -17,98 +23,123 @@ export class AuthService {
     return hostname === 'localhost' ? 'localhost' : hostname;
   }
 
+  private static async apiCall(
+    endpoint: string,
+    method: string = 'GET',
+    body?: any
+  ) {
+    const response = await fetch(`${this.API_BASE_URL}${endpoint}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `API error: ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
   static async register(username: string): Promise<CredentialData> {
     if (!username.trim()) {
       throw new Error('Username is required');
     }
 
-    // Generate a random challenge
-    const challenge = new Uint8Array(32);
-    crypto.getRandomValues(challenge);
+    try {
+      console.log('=== REGISTRATION START ===');
+      console.log('WebAuthn supported:', this.checkSupport());
 
-    // User ID (should be unique and persistent)
-    const userId = new TextEncoder().encode(username);
+      // Get registration options from server
+      const options = await this.apiCall('/api/register/begin', 'POST', {
+        username: username.trim(),
+      });
 
-    const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions =
-      {
-        challenge,
-        rp: {
-          name: 'Passkeys Demo',
-          id: this.getRpId(),
-        },
-        user: {
-          id: userId,
-          name: username,
-          displayName: username,
-        },
-        pubKeyCredParams: [
-          {
-            alg: -7, // ES256
-            type: 'public-key',
-          },
-          {
-            alg: -257, // RS256
-            type: 'public-key',
-          },
-        ],
-        authenticatorSelection: {
-          authenticatorAttachment: 'platform',
-          userVerification: 'required',
-        },
-        timeout: 60000,
-        attestation: 'direct',
+      console.log('Registration options from server:', options);
+
+      // Use SimpleWebAuthn browser library to handle registration
+      const credential = await startRegistration(options);
+
+      console.log('Credential created by SimpleWebAuthn browser:', credential);
+
+      // Send to server for verification
+      const verificationResult = await this.apiCall(
+        '/api/register/complete',
+        'POST',
+        {
+          username: username.trim(),
+          credential: credential,
+        }
+      );
+
+      if (!verificationResult.verified) {
+        throw new Error('Registration verification failed');
+      }
+
+      console.log('Registration successful!');
+
+      return {
+        id: credential.id,
+        rawId: [], // SimpleWebAuthn handles this internally
+        username: username.trim(),
+        rpId: this.getRpId(),
       };
-
-    const credential = (await navigator.credentials.create({
-      publicKey: publicKeyCredentialCreationOptions,
-    })) as PublicKeyCredential;
-
-    if (!credential) {
-      throw new Error('Failed to create credential');
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw new Error(
+        `Registration failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
-
-    // Store credential info (in a real app, send to server)
-    const credentialData: CredentialData = {
-      id: credential.id,
-      rawId: Array.from(new Uint8Array(credential.rawId)),
-      username: username,
-      rpId: this.getRpId(),
-    };
-
-    localStorage.setItem(
-      this.CREDENTIAL_STORAGE_KEY,
-      JSON.stringify(credentialData)
-    );
-
-    return credentialData;
   }
 
   static async login(): Promise<string> {
-    // Generate a random challenge
-    const challenge = new Uint8Array(32);
-    crypto.getRandomValues(challenge);
+    try {
+      console.log('=== LOGIN START ===');
+      console.log('WebAuthn supported:', this.checkSupport());
 
-    const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions =
-      {
-        challenge,
-        userVerification: 'required',
-        timeout: 60000,
-      };
+      // Get authentication options from server
+      const options = await this.apiCall('/api/authenticate/begin', 'POST');
 
-    const credential = (await navigator.credentials.get({
-      publicKey: publicKeyCredentialRequestOptions,
-    })) as PublicKeyCredential;
+      console.log('Authentication options from server:', options);
 
-    if (!credential) {
-      throw new Error('Failed to authenticate');
+      // Use SimpleWebAuthn browser library to handle authentication
+      const credential = await startAuthentication(options);
+
+      console.log('Credential obtained by SimpleWebAuthn browser:', credential);
+
+      // Send to server for verification
+      const verificationResult = await this.apiCall(
+        '/api/authenticate/complete',
+        'POST',
+        {
+          credential: credential,
+        }
+      );
+
+      if (!verificationResult.verified) {
+        throw new Error('Authentication verification failed');
+      }
+
+      console.log('Authentication successful!');
+      return verificationResult.username;
+    } catch (error) {
+      console.error('Authentication error:', error);
+      throw error;
     }
+  }
 
-    // Try to get username from stored credential if available
-    const storedCredential = localStorage.getItem(this.CREDENTIAL_STORAGE_KEY);
-    const username = storedCredential
-      ? JSON.parse(storedCredential).username
-      : 'User';
-
-    return username;
+  // Debug method to check stored credentials
+  static async getStoredCredentials(username: string) {
+    try {
+      return await this.apiCall(
+        `/api/users/${encodeURIComponent(username)}/credentials`
+      );
+    } catch (error) {
+      console.error('Failed to get stored credentials:', error);
+      return { credentials: [] };
+    }
   }
 }
