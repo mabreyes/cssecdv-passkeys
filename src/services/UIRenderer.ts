@@ -77,7 +77,8 @@ export class UIRenderer {
         <div class="button-group">
           <md-filled-button 
             id="register-btn" 
-            class="primary-button" 
+            class="primary-button"
+            type="button"
             disabled>
             <span class="material-symbols-rounded" slot="icon">${isRegistering ? 'hourglass_empty' : 'fingerprint'}</span>
             ${isRegistering ? 'Creating Passkey...' : 'Register with Passkey'}
@@ -93,7 +94,11 @@ export class UIRenderer {
             <p>I have an existing account</p>
           </div>
           
-          <md-outlined-button id="login-btn" class="secondary-button" ${isLoading ? 'disabled' : ''}>
+          <md-outlined-button 
+            id="login-btn" 
+            class="secondary-button" 
+            type="button"
+            ${isLoading ? 'disabled' : ''}>
             <span class="material-symbols-rounded" slot="icon">${isAuthenticating ? 'hourglass_empty' : 'vpn_key'}</span>
             ${isAuthenticating ? 'Authenticating...' : 'Login with Passkey'}
           </md-outlined-button>
@@ -131,7 +136,10 @@ export class UIRenderer {
       <div class="dashboard">
         <h2>Welcome back, ${username}! 🎉</h2>
         <p>You are successfully logged in with your passkey.</p>
-        <md-outlined-button id="logout-btn" class="logout-button">
+        <md-outlined-button 
+          id="logout-btn" 
+          class="logout-button"
+          type="button">
           <span class="material-symbols-rounded" slot="icon">logout</span>
           Logout
         </md-outlined-button>

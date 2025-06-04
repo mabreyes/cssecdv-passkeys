@@ -195,17 +195,20 @@ export class AuthService {
   }
 
   static async login(): Promise<string> {
+    console.log('=== AuthService.login START ===');
     try {
-      console.log('=== LOGIN START ===');
       console.log('WebAuthn supported:', this.checkSupport());
 
       if (!this.checkSupport()) {
-        throw new Error(
+        const error = new Error(
           'WebAuthn is not supported in this browser. Please use a modern browser like Chrome, Safari, or Firefox.'
         );
+        console.error('WebAuthn not supported:', error);
+        throw error;
       }
 
       // Get authentication options from server
+      console.log('Requesting authentication options...');
       const options = await this.apiCall('/api/authenticate/begin', 'POST');
 
       console.log('Authentication options from server:', options);
@@ -213,9 +216,13 @@ export class AuthService {
       // Use SimpleWebAuthn browser library to handle authentication
       let credential;
       try {
+        console.log('Starting WebAuthn authentication...');
         credential = await startAuthentication(options);
+        console.log('WebAuthn authentication completed successfully');
       } catch (error: any) {
         console.error('WebAuthn authentication error:', error);
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
 
         // Handle specific WebAuthn errors
         if (error.name === 'NotAllowedError') {
@@ -260,6 +267,7 @@ export class AuthService {
       // Send to server for verification
       let verificationResult;
       try {
+        console.log('Sending credential to server for verification...');
         verificationResult = await this.apiCall(
           '/api/authenticate/complete',
           'POST',
@@ -267,6 +275,7 @@ export class AuthService {
             credential: credential,
           }
         );
+        console.log('Server verification completed:', verificationResult);
       } catch (error: any) {
         console.error('Server verification error:', error);
 
@@ -295,25 +304,33 @@ export class AuthService {
       }
 
       if (!verificationResult.verified) {
+        console.error('Verification failed, result:', verificationResult);
         throw new Error(
           'Passkey verification failed. Please try again or register a new passkey.'
         );
       }
 
       console.log('Authentication successful!');
+      console.log('=== AuthService.login SUCCESS ===');
       return verificationResult.username;
     } catch (error) {
+      console.error('=== AuthService.login ERROR ===');
       console.error('Authentication error:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error constructor:', error?.constructor?.name);
 
       // Re-throw with preserved message if it's already a user-friendly error
       if (error instanceof Error) {
+        console.error('Re-throwing Error instance:', error.message);
         throw error;
       }
 
       // Fallback for unknown error types
-      throw new Error(
+      const fallbackError = new Error(
         'Login failed due to an unexpected error. Please try again.'
       );
+      console.error('Throwing fallback error:', fallbackError.message);
+      throw fallbackError;
     }
   }
 

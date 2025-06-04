@@ -22,9 +22,47 @@ export class PasskeysApp {
   private eventHandler!: EventHandler;
 
   constructor() {
+    this.setupGlobalErrorHandlers();
     this.restoreLoginState();
     this.initializeEventHandler();
     this.init();
+  }
+
+  private setupGlobalErrorHandlers(): void {
+    // Catch any unhandled promise rejections
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('Unhandled promise rejection:', event.reason);
+      event.preventDefault(); // Prevent browser default behavior
+
+      let errorMessage = 'An unexpected error occurred';
+      if (event.reason instanceof Error) {
+        errorMessage = event.reason.message;
+      } else if (typeof event.reason === 'string') {
+        errorMessage = event.reason;
+      }
+
+      MessageService.show(
+        `Unhandled error: ${errorMessage}. Please try again.`,
+        'error'
+      );
+    });
+
+    // Catch any unhandled JavaScript errors
+    window.addEventListener('error', (event) => {
+      console.error('Unhandled JavaScript error:', event.error);
+
+      let errorMessage = 'An unexpected error occurred';
+      if (event.error instanceof Error) {
+        errorMessage = event.error.message;
+      } else if (typeof event.error === 'string') {
+        errorMessage = event.error;
+      }
+
+      MessageService.show(
+        `JavaScript error: ${errorMessage}. Please refresh the page if this persists.`,
+        'error'
+      );
+    });
   }
 
   private restoreLoginState(): void {
@@ -426,13 +464,18 @@ export class PasskeysApp {
   }
 
   private async handleLogin(): Promise<void> {
+    console.log('=== handleLogin called ===');
+
     // Prevent double login
     if (this.isAuthenticating) {
+      console.log('Already authenticating, showing message');
       MessageService.show('Authentication already in progress...', 'info');
       return;
     }
 
+    // Wrap everything in try-catch to ensure no errors escape
     try {
+      console.log('Setting authentication state');
       this.isAuthenticating = true; // Set authentication state
       this.render(); // Update UI to show loading state
 
@@ -444,7 +487,9 @@ export class PasskeysApp {
 
       MessageService.show('Authenticating with passkey...', 'info');
 
+      console.log('Calling AuthService.login()');
       const username = await AuthService.login();
+      console.log('AuthService.login() succeeded, username:', username);
 
       this.username = username;
       this.isLoggedIn = true;
@@ -452,9 +497,28 @@ export class PasskeysApp {
 
       MessageService.show('Login successful!', 'success');
       this.render();
+      console.log('Login completed successfully');
     } catch (error) {
-      const errorMessage = (error as Error).message;
-      console.error('Login error:', errorMessage);
+      console.log('=== LOGIN ERROR CAUGHT ===');
+      console.error('Login error object:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error constructor:', error?.constructor?.name);
+
+      let errorMessage = 'Login failed due to an unknown error';
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        console.log('Error message:', errorMessage);
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage =
+          (error as { message: string }).message || 'Unknown error object';
+      } else if (error && typeof error === 'object') {
+        errorMessage = error.toString() || 'Unknown error object';
+      }
+
+      console.log('Final error message to display:', errorMessage);
 
       // Provide specific guidance based on error type
       if (
@@ -499,6 +563,7 @@ export class PasskeysApp {
       // Show additional guidance for common issues
       this.showLoginGuidance(errorMessage);
     } finally {
+      console.log('Login finally block - resetting state');
       this.isAuthenticating = false; // Reset authentication state
       this.render(); // Update UI to remove loading state
 
@@ -506,6 +571,7 @@ export class PasskeysApp {
       setTimeout(() => {
         this.updateValidationFeedback();
       }, 50);
+      console.log('=== handleLogin completed ===');
     }
   }
 
