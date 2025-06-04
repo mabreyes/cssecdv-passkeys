@@ -344,10 +344,53 @@ export class PasskeysApp {
       MessageService.show('Passkey created successfully!', 'success');
       this.render();
     } catch (error) {
-      MessageService.show(
-        `Registration failed: ${(error as Error).message}`,
-        'error'
-      );
+      const errorMessage = (error as Error).message;
+      console.error('Registration error:', errorMessage);
+
+      // Provide specific guidance based on error type
+      if (
+        errorMessage.includes('cancelled') ||
+        errorMessage.includes('denied')
+      ) {
+        MessageService.show(
+          `${errorMessage} You must approve the passkey creation to complete registration.`,
+          'error'
+        );
+      } else if (
+        errorMessage.includes('already exists') ||
+        errorMessage.includes('already taken')
+      ) {
+        MessageService.show(
+          `${errorMessage} Please choose a different username or try logging in if you already have an account.`,
+          'error'
+        );
+      } else if (errorMessage.includes('timed out')) {
+        MessageService.show(
+          `${errorMessage} The registration window expired - please try registering again and complete the verification promptly.`,
+          'error'
+        );
+      } else if (errorMessage.includes('not supported')) {
+        MessageService.show(
+          `${errorMessage} Please ensure your device has biometric authentication enabled or try using a different browser.`,
+          'error'
+        );
+      } else if (errorMessage.includes('Username validation failed')) {
+        MessageService.show(
+          `${errorMessage} Please fix the username issues shown above and try again.`,
+          'error'
+        );
+      } else if (errorMessage.includes('session expired')) {
+        MessageService.show(
+          `${errorMessage} This can happen if you wait too long between steps.`,
+          'error'
+        );
+      } else {
+        // Generic error with suggestion
+        MessageService.show(
+          `${errorMessage} Please try again or refresh the page if the issue persists.`,
+          'error'
+        );
+      }
     } finally {
       this.isRegistering = false; // Reset registration state
       this.render(); // Update UI to remove loading state
@@ -356,6 +399,29 @@ export class PasskeysApp {
       setTimeout(() => {
         this.updateValidationFeedback();
       }, 50);
+    }
+  }
+
+  private showLoginGuidance(errorMessage: string): void {
+    // Show additional helpful information for common login issues
+    if (
+      errorMessage.includes('No passkeys found') ||
+      errorMessage.includes('not recognized')
+    ) {
+      // After a short delay, show additional guidance
+      setTimeout(() => {
+        MessageService.show(
+          "💡 Tip: Passkeys are device-specific. If you registered on a different device, you'll need to register again on this device.",
+          'info'
+        );
+      }, 3000);
+    } else if (errorMessage.includes('cancelled')) {
+      setTimeout(() => {
+        MessageService.show(
+          '💡 Tip: Make sure to complete the biometric verification (Face ID, Touch ID, Windows Hello) when prompted.',
+          'info'
+        );
+      }, 3000);
     }
   }
 
@@ -387,7 +453,51 @@ export class PasskeysApp {
       MessageService.show('Login successful!', 'success');
       this.render();
     } catch (error) {
-      MessageService.show(`Login failed: ${(error as Error).message}`, 'error');
+      const errorMessage = (error as Error).message;
+      console.error('Login error:', errorMessage);
+
+      // Provide specific guidance based on error type
+      if (
+        errorMessage.includes('No passkeys found') ||
+        errorMessage.includes('not recognized')
+      ) {
+        MessageService.show(
+          `${errorMessage} Try registering a new passkey first, or use a device where you've previously registered.`,
+          'error'
+        );
+      } else if (
+        errorMessage.includes('cancelled') ||
+        errorMessage.includes('aborted')
+      ) {
+        MessageService.show(
+          `${errorMessage} Click "Login with Passkey" and complete the biometric verification to proceed.`,
+          'error'
+        );
+      } else if (errorMessage.includes('timed out')) {
+        MessageService.show(
+          `${errorMessage} The authentication window may have expired - please try again.`,
+          'error'
+        );
+      } else if (errorMessage.includes('not supported')) {
+        MessageService.show(
+          `${errorMessage} You may need to enable biometric authentication on your device or use a security key.`,
+          'error'
+        );
+      } else if (errorMessage.includes('session expired')) {
+        MessageService.show(
+          `${errorMessage} This can happen if you wait too long between steps.`,
+          'error'
+        );
+      } else {
+        // Generic error with suggestion
+        MessageService.show(
+          `${errorMessage} If this persists, try refreshing the page or registering a new passkey.`,
+          'error'
+        );
+      }
+
+      // Show additional guidance for common issues
+      this.showLoginGuidance(errorMessage);
     } finally {
       this.isAuthenticating = false; // Reset authentication state
       this.render(); // Update UI to remove loading state
