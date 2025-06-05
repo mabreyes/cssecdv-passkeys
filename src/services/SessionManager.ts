@@ -163,13 +163,41 @@ export class SessionManager {
 
   public async login(): Promise<string> {
     const username = await AuthService.login();
-    await this.refreshSession();
+
+    // Create session directly from successful login response
+    // instead of calling refreshSession() which requires working cookies
+    const session: UserSession = {
+      authenticated: true,
+      username: username,
+      sessionId: `temp-${Date.now()}`, // Temporary until proper session sync
+      loginTime: Date.now(),
+      expiresAt: new Date(Date.now() + 604800000).toISOString(), // 1 week
+    };
+    this.setSession(session, 'login');
+
+    // Try to sync with server session in background (after cookies have time to settle)
+    setTimeout(() => this.refreshSession(), 2000);
+
     return username;
   }
 
   public async register(username: string) {
     const result = await AuthService.register(username);
-    await this.refreshSession();
+
+    // Create session directly from successful registration response
+    // instead of calling refreshSession() which requires working cookies
+    const session: UserSession = {
+      authenticated: true,
+      username: result.username,
+      sessionId: `temp-${Date.now()}`, // Temporary until proper session sync
+      loginTime: Date.now(),
+      expiresAt: new Date(Date.now() + 604800000).toISOString(), // 1 week
+    };
+    this.setSession(session, 'login');
+
+    // Try to sync with server session in background (after cookies have time to settle)
+    setTimeout(() => this.refreshSession(), 2000);
+
     return result;
   }
 
