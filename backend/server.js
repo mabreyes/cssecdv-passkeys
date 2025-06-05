@@ -94,7 +94,7 @@ function getAndRemoveChallenge(key) {
 
 // Helper functions
 async function getUserByUsername(username) {
-  const result = await pool.query('SELECT * FROM users WHERE username = $1', [
+  const result = await pool.query('SELECT * FROM users WHERE LOWER(username) = LOWER($1)', [
     username,
   ]);
   return result.rows[0];
@@ -103,7 +103,7 @@ async function getUserByUsername(username) {
 async function createUser(username) {
   const result = await pool.query(
     'INSERT INTO users (username) VALUES ($1) RETURNING *',
-    [username]
+    [username.toLowerCase()]
   );
   return result.rows[0];
 }
@@ -309,7 +309,7 @@ app.post('/api/register/begin', async (req, res) => {
     });
 
     // Store challenge for verification
-    storeChallenge(username, options.challenge);
+    storeChallenge(username.toLowerCase(), options.challenge);
 
     // Send raw options for SimpleWebAuthn browser library
     console.log('=== DETAILED REGISTRATION OPTIONS ===');
@@ -356,7 +356,7 @@ app.post('/api/register/complete', async (req, res) => {
         .json({ error: 'Username and credential are required' });
     }
 
-    const expectedChallenge = getAndRemoveChallenge(username);
+    const expectedChallenge = getAndRemoveChallenge(username.toLowerCase());
     if (!expectedChallenge) {
       console.log('No challenge found for username:', username);
       return res.status(400).json({ error: 'Invalid or expired challenge' });
@@ -372,7 +372,7 @@ app.post('/api/register/complete', async (req, res) => {
     if (existingCredential) {
       console.log('Credential already exists, skipping save');
       // Clean up challenge
-      getAndRemoveChallenge(username);
+      getAndRemoveChallenge(username.toLowerCase());
 
       return res.json({
         verified: true,
@@ -411,7 +411,7 @@ app.post('/api/register/complete', async (req, res) => {
       if (duplicateCheck) {
         console.log('Credential created by another request, skipping save');
         // Clean up challenge
-        getAndRemoveChallenge(username);
+        getAndRemoveChallenge(username.toLowerCase());
 
         return res.json({
           verified: true,
@@ -431,7 +431,7 @@ app.post('/api/register/complete', async (req, res) => {
       );
 
       // Clean up challenge
-      getAndRemoveChallenge(username);
+      getAndRemoveChallenge(username.toLowerCase());
 
       console.log('Registration successful for user:', username);
 
@@ -455,7 +455,7 @@ app.post('/api/register/complete', async (req, res) => {
       const { username } = req.body;
 
       // Clean up challenge
-      getAndRemoveChallenge(username);
+      getAndRemoveChallenge(username.toLowerCase());
 
       // Determine which constraint was violated
       let message = 'Credential already registered';
@@ -653,3 +653,4 @@ process.on('SIGINT', async () => {
   await pool.end();
   process.exit(0);
 });
+ 

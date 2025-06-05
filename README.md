@@ -39,10 +39,10 @@ A modern, secure, full-stack passkeys authentication system with real-time usern
 
 **Complete development environment with database persistence:**
 
-```bash
+   ```bash
 # Clone the repository
-git clone https://github.com/mabreyes/cssecdv-passkeys
-cd cssecdv-passkeys
+   git clone https://github.com/mabreyes/cssecdv-passkeys
+   cd cssecdv-passkeys
 
 # Start all services (Frontend + Backend + Database)
 docker-compose up -d
@@ -58,11 +58,11 @@ open http://localhost:5173
 
 **For testing the UI with localStorage:**
 
-```bash
+   ```bash
 # Clone and install
 git clone https://github.com/mabreyes/cssecdv-passkeys
 cd cssecdv-passkeys
-npm install
+   npm install
 
 # Start development server
 npm run dev

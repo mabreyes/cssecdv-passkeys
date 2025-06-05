@@ -327,7 +327,7 @@ export class PasskeysApp {
 
     // Validate username before proceeding
     if (!username || !username.trim()) {
-      MessageService.show('Please enter a username', 'error');
+        MessageService.show('Please enter a username', 'error');
       return;
     }
 
@@ -424,10 +424,10 @@ export class PasskeysApp {
         );
       } else {
         // Generic error with suggestion
-        MessageService.show(
+      MessageService.show(
           `${errorMessage} Please try again or refresh the page if the issue persists.`,
-          'error'
-        );
+        'error'
+      );
       }
     } finally {
       this.isRegistering = false; // Reset registration state
