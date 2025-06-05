@@ -76,7 +76,7 @@ app.use(
       secure: NODE_ENV === 'production', // Only send cookies over HTTPS in production
       httpOnly: true, // Prevent XSS attacks
       maxAge: SESSION_MAX_AGE, // 1 week
-      sameSite: NODE_ENV === 'production' ? 'strict' : 'lax',
+      sameSite: NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-origin in production
     },
   })
 );
