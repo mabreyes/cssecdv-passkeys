@@ -216,6 +216,24 @@ export class SessionManager {
   public async refreshSession(): Promise<void> {
     try {
       const session = await AuthService.checkAuthStatus();
+
+      // Don't override a recent successful login with a failed server check
+      // (gives time for cross-domain cookies to work)
+      if (
+        !session.authenticated &&
+        this.session.authenticated &&
+        this.session.sessionId?.startsWith('temp-')
+      ) {
+        const loginTime = this.session.loginTime || 0;
+        const timeSinceLogin = Date.now() - loginTime;
+
+        // If login was within last 30 seconds, don't override with server failure
+        if (timeSinceLogin < 30000) {
+          console.log('Ignoring server auth check - recent manual login');
+          return;
+        }
+      }
+
       this.setSession(session, 'sessionChange');
 
       if (session.authenticated) {
@@ -229,6 +247,21 @@ export class SessionManager {
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Failed to refresh session:', error);
+
+      // Don't override a recent successful login with an error
+      if (
+        this.session.authenticated &&
+        this.session.sessionId?.startsWith('temp-')
+      ) {
+        const loginTime = this.session.loginTime || 0;
+        const timeSinceLogin = Date.now() - loginTime;
+
+        if (timeSinceLogin < 30000) {
+          console.log('Ignoring server auth error - recent manual login');
+          return;
+        }
+      }
+
       this.setSession({ authenticated: false }, 'sessionChange');
     }
   }
