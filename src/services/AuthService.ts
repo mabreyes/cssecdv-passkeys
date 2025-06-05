@@ -183,6 +183,7 @@ export class AuthService {
           {
             username: username.trim(),
             credential: credential,
+            challengeToken: options.challengeToken, // Include the challenge token
           }
         );
       } catch (error: any) {
@@ -315,6 +316,7 @@ export class AuthService {
           'POST',
           {
             credential: credential,
+            challengeToken: options.challengeToken, // Include the challenge token
           }
         );
         console.log('Server verification completed:', verificationResult);

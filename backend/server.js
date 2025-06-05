@@ -57,6 +57,15 @@ redisClient.on('connect', () => {
 
 await redisClient.connect();
 
+// Test Redis connection
+try {
+  await redisClient.ping();
+  console.log('Redis connection verified');
+} catch (error) {
+  console.error('Redis connection test failed:', error);
+  console.warn('Challenge storage may not work properly');
+}
+
 // Middleware
 app.use(
   helmet({
@@ -98,47 +107,64 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Session-based challenge storage (replaces in-memory Map)
+// Challenge storage using Redis with tokens (for cross-domain support)
 const CHALLENGE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
-// Helper function to store challenge in session
-function storeChallenge(session, challenge) {
+// Helper function to store challenge with token
+async function storeChallenge(challenge) {
+  const token = uuidv4();
+  const key = `challenge:${token}`;
+
   console.log('=== STORING CHALLENGE ===');
-  console.log('Session ID:', session.id);
+  console.log('Challenge token:', token);
   console.log('Challenge:', challenge);
-  session.challenge = challenge;
-  session.challengeTimestamp = Date.now();
-  console.log('Challenge stored in session');
+
+  try {
+    await redisClient.setEx(
+      key,
+      Math.floor(CHALLENGE_TIMEOUT / 1000),
+      challenge
+    );
+    console.log('Challenge stored in Redis with token');
+    return token;
+  } catch (error) {
+    console.error('Redis error storing challenge:', error);
+    throw new Error('Failed to store challenge - Redis unavailable');
+  }
 }
 
-// Helper function to get and validate challenge from session
-function getAndValidateChallenge(session) {
+// Helper function to get and validate challenge by token
+async function getAndValidateChallenge(token) {
   console.log('=== RETRIEVING CHALLENGE ===');
-  console.log('Session ID:', session.id);
-  console.log('Session challenge:', session.challenge);
-  console.log('Session challengeTimestamp:', session.challengeTimestamp);
+  console.log('Challenge token:', token);
 
-  if (!session.challenge || !session.challengeTimestamp) {
-    console.log('No challenge or timestamp found in session');
+  if (!token) {
+    console.log('No challenge token provided');
     return null;
   }
 
-  const now = Date.now();
-  if (now - session.challengeTimestamp > CHALLENGE_TIMEOUT) {
-    // Challenge expired
-    console.log('Challenge expired');
-    delete session.challenge;
-    delete session.challengeTimestamp;
+  const key = `challenge:${token}`;
+
+  try {
+    const challenge = await redisClient.get(key);
+    console.log('Retrieved challenge:', challenge);
+
+    if (!challenge) {
+      console.log('No challenge found for token or expired');
+      return null;
+    }
+
+    // Remove challenge after use (one-time use)
+    await redisClient.del(key);
+    console.log('Challenge retrieved and cleared from Redis');
+
+    return challenge;
+  } catch (error) {
+    console.error('Redis error retrieving challenge:', error);
+    // Return null instead of throwing to allow graceful degradation
+    console.log('Returning null due to Redis error');
     return null;
   }
-
-  const challenge = session.challenge;
-  // Remove challenge after use (one-time use)
-  delete session.challenge;
-  delete session.challengeTimestamp;
-  console.log('Challenge retrieved and cleared from session');
-
-  return challenge;
 }
 
 // Middleware to check if user is authenticated
@@ -386,13 +412,19 @@ app.post('/api/register/begin', async (req, res) => {
       supportedAlgorithmIDs: [-7, -257], // ES256, RS256
     });
 
-    // Store challenge for verification
-    console.log('=== SESSION INFO AT REGISTER BEGIN ===');
-    console.log('Session before storing challenge:', req.session.id);
-    storeChallenge(req.session, options.challenge);
-    console.log('Session after storing challenge:', req.session.id);
+    // Store challenge for verification and get token
+    let challengeToken;
+    try {
+      challengeToken = await storeChallenge(options.challenge);
+    } catch (error) {
+      console.error('Failed to store challenge for registration:', error);
+      return res.status(500).json({
+        error:
+          'Registration service temporarily unavailable. Please try again later.',
+      });
+    }
 
-    // Send raw options for SimpleWebAuthn browser library
+    // Send raw options for SimpleWebAuthn browser library with challenge token
     console.log('=== DETAILED REGISTRATION OPTIONS ===');
     console.log(
       'Challenge:',
@@ -416,7 +448,10 @@ app.post('/api/register/begin', async (req, res) => {
     console.log('Full options object:', JSON.stringify(options, null, 2));
     console.log('=====================================');
 
-    res.json(options);
+    res.json({
+      ...options,
+      challengeToken: challengeToken, // Include the challenge token for the next request
+    });
   } catch (error) {
     console.error('Registration begin error:', error);
     res.status(500).json({ error: 'Failed to generate registration options' });
@@ -426,22 +461,23 @@ app.post('/api/register/begin', async (req, res) => {
 // Verify registration
 app.post('/api/register/complete', async (req, res) => {
   try {
-    const { username, credential } = req.body;
+    const { username, credential, challengeToken } = req.body;
 
     console.log('Registration complete - Username:', username);
     console.log('Registration complete - Credential received:', credential.id);
-    console.log('=== SESSION INFO AT REGISTER COMPLETE ===');
-    console.log('Session ID at complete:', req.session.id);
+    console.log('Registration complete - Challenge token:', challengeToken);
 
-    if (!username || !credential) {
+    if (!username || !credential || !challengeToken) {
       return res
         .status(400)
-        .json({ error: 'Username and credential are required' });
+        .json({
+          error: 'Username, credential, and challenge token are required',
+        });
     }
 
-    const expectedChallenge = getAndValidateChallenge(req.session);
+    const expectedChallenge = await getAndValidateChallenge(challengeToken);
     if (!expectedChallenge) {
-      console.log('No challenge found for username:', username);
+      console.log('No challenge found for token:', challengeToken);
       return res.status(400).json({ error: 'Invalid or expired challenge' });
     }
 
@@ -454,8 +490,6 @@ app.post('/api/register/complete', async (req, res) => {
     const existingCredential = await getCredentialById(credential.id);
     if (existingCredential) {
       console.log('Credential already exists, skipping save');
-      // Clean up challenge
-      getAndValidateChallenge(req.session);
 
       return res.json({
         verified: true,
@@ -493,8 +527,6 @@ app.post('/api/register/complete', async (req, res) => {
       const duplicateCheck = await getCredentialById(credential.id);
       if (duplicateCheck) {
         console.log('Credential created by another request, skipping save');
-        // Clean up challenge
-        getAndValidateChallenge(req.session);
 
         return res.json({
           verified: true,
@@ -512,9 +544,6 @@ app.post('/api/register/complete', async (req, res) => {
         credentialID,
         RP_ID
       );
-
-      // Clean up challenge
-      getAndValidateChallenge(req.session);
 
       // Create user session after successful registration
       createUserSession(req, user.id, user.username);
@@ -540,9 +569,6 @@ app.post('/api/register/complete', async (req, res) => {
       console.log('Unique constraint violation - credential already exists');
       console.log('Constraint detail:', error.detail);
       const { username } = req.body;
-
-      // Clean up challenge
-      getAndValidateChallenge(req.session);
 
       // Get user for session creation
       const user = await getUserByUsername(username);
@@ -581,15 +607,27 @@ app.post('/api/authenticate/begin', async (req, res) => {
       userVerification: 'required',
     });
 
-    // Store challenge for verification
-    storeChallenge(req.session, options.challenge);
+    // Store challenge for verification and get token
+    let challengeToken;
+    try {
+      challengeToken = await storeChallenge(options.challenge);
+    } catch (error) {
+      console.error('Failed to store challenge for authentication:', error);
+      return res.status(500).json({
+        error:
+          'Authentication service temporarily unavailable. Please try again later.',
+      });
+    }
 
     // Send raw options for SimpleWebAuthn browser library
     console.log(
       'Sending authentication options for SimpleWebAuthn browser:',
       options
     );
-    res.json(options);
+    res.json({
+      ...options,
+      challengeToken: challengeToken, // Include the challenge token for the next request
+    });
   } catch (error) {
     console.error('Authentication begin error:', error);
     res
@@ -601,15 +639,18 @@ app.post('/api/authenticate/begin', async (req, res) => {
 // Verify authentication
 app.post('/api/authenticate/complete', async (req, res) => {
   try {
-    const { credential } = req.body;
+    const { credential, challengeToken } = req.body;
 
     console.log('=== AUTHENTICATION DEBUG ===');
     console.log('Received credential:', credential);
     console.log('Credential ID:', credential.id);
     console.log('Credential rawId:', credential.rawId);
+    console.log('Challenge token:', challengeToken);
 
-    if (!credential) {
-      return res.status(400).json({ error: 'Credential is required' });
+    if (!credential || !challengeToken) {
+      return res
+        .status(400)
+        .json({ error: 'Credential and challenge token are required' });
     }
 
     // Try looking up the credential using the credential.id directly first
@@ -649,7 +690,7 @@ app.post('/api/authenticate/complete', async (req, res) => {
       ).toString('utf8')
     );
 
-    const expectedChallenge = getAndValidateChallenge(req.session);
+    const expectedChallenge = await getAndValidateChallenge(challengeToken);
     if (!expectedChallenge) {
       return res.status(400).json({ error: 'Invalid or expired challenge' });
     }
@@ -672,9 +713,6 @@ app.post('/api/authenticate/complete', async (req, res) => {
         storedCredential.id,
         verification.authenticationInfo.newCounter
       );
-
-      // Clean up challenge
-      getAndValidateChallenge(req.session);
 
       // Get user for session creation
       const user = await getUserByUsername(storedCredential.username);
@@ -807,12 +845,24 @@ app.listen(PORT, () => {
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, closing HTTP server...');
-  await pool.end();
+  try {
+    await pool.end();
+    await redisClient.quit();
+    console.log('Database and Redis connections closed');
+  } catch (error) {
+    console.error('Error during shutdown:', error);
+  }
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   console.log('SIGINT received, closing HTTP server...');
-  await pool.end();
+  try {
+    await pool.end();
+    await redisClient.quit();
+    console.log('Database and Redis connections closed');
+  } catch (error) {
+    console.error('Error during shutdown:', error);
+  }
   process.exit(0);
 });
