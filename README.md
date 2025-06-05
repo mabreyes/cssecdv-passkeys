@@ -16,6 +16,8 @@ A modern, secure, full-stack passkeys authentication system with real-time usern
 - **Phishing Resistant** - Passkeys are cryptographically bound to domains
 - **Device-Bound Security** - Private keys never leave your device
 - **Challenge-Response Protocol** - Protection against replay attacks
+- **Secure Session Management** - Redis-based sessions with HttpOnly cookies
+- **Automatic Session Expiration** - 1-week maximum with server-side validation
 
 ### 🎯 **User Experience**
 
@@ -27,24 +29,92 @@ A modern, secure, full-stack passkeys authentication system with real-time usern
 
 ### 🏗️ **Architecture & Development**
 
-- **Full-Stack Solution** - Frontend + Backend + Database
+- **Full-Stack Solution** - Frontend + Backend + Database + Redis Sessions
 - **PostgreSQL Persistence** - Secure server-side credential storage
+- **Redis Session Management** - 1-week session duration with automatic expiration
 - **Docker Environment** - Complete development setup with one command
 - **TypeScript Throughout** - Type safety across the entire stack
 - **Production Ready** - Deployable with proper security headers
+
+## 🔑 Redis Session Management
+
+The application uses Redis for secure, scalable session management with the following features:
+
+### Session Features
+
+- **1-Week Duration** - Sessions automatically expire after 604,800,000 milliseconds (1 week)
+- **Secure Cookies** - HttpOnly cookies with proper security settings prevent XSS attacks
+- **Cross-Tab Sync** - Session state synchronized across browser tabs
+- **Automatic Monitoring** - Frontend monitors session expiration and handles renewal
+- **Server-Side Validation** - All API requests validate session server-side
+
+### Configuration
+
+The Redis session system is configured via environment variables in `docker-compose.yml`:
+
+```yaml
+environment:
+  REDIS_URL: redis://redis:6379
+  SESSION_SECRET: your-super-secret-session-key-change-in-production
+  SESSION_MAX_AGE: 604800000 # 1 week in milliseconds
+```
+
+### Session API Endpoints
+
+- `GET /api/auth/status` - Check current authentication status
+- `GET /api/auth/me` - Get user profile and session information
+- `POST /api/auth/logout` - Destroy session and logout
+
+### Frontend Session Management
+
+```typescript
+import { sessionManager } from './services/SessionManager';
+
+// Check authentication status
+const isAuthenticated = sessionManager.isAuthenticated();
+const session = sessionManager.getSession();
+
+// Listen for session events
+sessionManager.addEventListener((event) => {
+  switch (event.type) {
+    case 'login':
+      console.log('User logged in');
+      break;
+    case 'logout':
+      console.log('User logged out');
+      break;
+    case 'sessionExpired':
+      console.log('Session expired, please log in again');
+      break;
+  }
+});
+
+// Authentication methods
+await sessionManager.login();
+await sessionManager.register('username');
+await sessionManager.logout();
+```
+
+### Security Benefits
+
+- **No localStorage** - Eliminates client-side tampering risks
+- **Server-Side Validation** - Every request validates session authenticity
+- **Automatic Cleanup** - Redis TTL ensures expired sessions are removed
+- **HttpOnly Cookies** - Prevents XSS access to session data
+- **CSRF Protection** - SameSite cookie attributes prevent CSRF attacks
 
 ## 🚀 Quick Start
 
 ### Option 1: Docker (Recommended)
 
-**Complete development environment with database persistence:**
+**Complete development environment with database and session persistence:**
 
-   ```bash
+```bash
 # Clone the repository
-   git clone https://github.com/mabreyes/cssecdv-passkeys
-   cd cssecdv-passkeys
+git clone https://github.com/mabreyes/cssecdv-passkeys
+cd cssecdv-passkeys
 
-# Start all services (Frontend + Backend + Database)
+# Start all services (Frontend + Backend + Database + Redis)
 docker-compose up -d
 
 # Wait for services to initialize (~30 seconds)
@@ -58,11 +128,11 @@ open http://localhost:5173
 
 **For testing the UI with localStorage:**
 
-   ```bash
+```bash
 # Clone and install
 git clone https://github.com/mabreyes/cssecdv-passkeys
 cd cssecdv-passkeys
-   npm install
+npm install
 
 # Start development server
 npm run dev
@@ -105,15 +175,24 @@ graph TB
         • Passkey credentials
         • Data persistence
         • Unique constraints`"]
+
+        Redis["`**Redis**
+        Port: 6379
+        • Session storage
+        • Challenge storage
+        • 1-week TTL
+        • Memory management`"]
     end
 
     Frontend <-->|HTTPS/API Calls| Backend
     Backend <-->|SQL Queries| Database
+    Backend <-->|Session Storage| Redis
     Frontend -.->|WebAuthn| Browser
 
     style Frontend fill:#e1f5fe
     style Backend fill:#f3e5f5
     style Database fill:#e8f5e8
+    style Redis fill:#ffcdd2
     style Browser fill:#fff3e0
 ```
 
@@ -147,10 +226,11 @@ graph TD
         • Error messages
         • Success feedback`"]
 
-        StateManager["`**StateManager**
-        • Session persistence
-        • LocalStorage management
-        • Login state`"]
+        SessionManager["`**SessionManager**
+        • Redis session management
+        • Event-driven architecture
+        • Automatic expiration monitoring
+        • Session state synchronization`"]
     end
 
     subgraph "Main Application"
@@ -163,7 +243,7 @@ graph TD
     PasskeysApp --> UIRenderer
     PasskeysApp --> EventHandler
     PasskeysApp --> MessageService
-    PasskeysApp --> StateManager
+    PasskeysApp --> SessionManager
 
     EventHandler --> ValidationService
     ValidationService --> UIRenderer
@@ -575,6 +655,26 @@ docker-compose restart postgres
 docker-compose down -v && docker-compose up -d
 ```
 
+**Session management issues**
+
+```bash
+# Check Redis status
+docker-compose ps redis
+docker-compose logs redis
+
+# Test Redis connection
+docker exec -it passkeys-redis redis-cli ping
+
+# View active sessions
+docker exec -it passkeys-redis redis-cli keys "sess:*"
+
+# Monitor Redis commands
+docker exec -it passkeys-redis redis-cli monitor
+
+# Restart Redis
+docker-compose restart redis
+```
+
 **Username validation not working**
 
 ```bash
@@ -703,19 +803,21 @@ const publicKeyCredentialCreationOptions = {
 
 - Uses hardcoded database credentials
 - No SSL/TLS required (localhost exception)
-- Challenges stored in memory
+- Session challenges stored in Redis
 - Basic rate limiting
+- Development session secret
 
 **Production Requirements:**
 
 - Environment-based configuration
 - HTTPS mandatory for WebAuthn
-- Redis/database for challenge storage
+- Strong Redis session secret
+- Redis persistence configuration
 - Comprehensive rate limiting
 - Security headers and CSP
 - Input validation and sanitization
 - Proper error handling
-- Audit logging
+- Session monitoring and audit logging
 
 ### Data Privacy
 

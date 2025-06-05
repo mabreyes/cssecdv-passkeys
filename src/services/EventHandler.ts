@@ -1,3 +1,4 @@
+/* eslint-disable no-console, @typescript-eslint/no-explicit-any */
 export interface EventCallbacks {
   onRegister: () => Promise<void>;
   onLogin: () => Promise<void>;

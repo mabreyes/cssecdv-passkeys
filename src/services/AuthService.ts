@@ -1,3 +1,4 @@
+/* eslint-disable no-console, @typescript-eslint/no-explicit-any */
 import {
   startRegistration,
   startAuthentication,
@@ -8,6 +9,28 @@ export interface CredentialData {
   rawId: number[];
   username: string;
   rpId: string;
+}
+
+export interface UserSession {
+  authenticated: boolean;
+  userId?: string;
+  username?: string;
+  sessionId?: string;
+  loginTime?: number;
+  expiresAt?: string;
+}
+
+export interface UserProfile {
+  user: {
+    id: string;
+    username: string;
+    createdAt: string;
+  };
+  session: {
+    sessionId: string;
+    loginTime: number;
+    expiresAt: string;
+  };
 }
 
 export class AuthService {
@@ -26,13 +49,14 @@ export class AuthService {
   private static async apiCall(
     endpoint: string,
     method: string = 'GET',
-    body?: any
+    body?: object
   ) {
     const response = await fetch(`${this.API_BASE_URL}${endpoint}`, {
       method,
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include', // Include cookies for session management
       body: body ? JSON.stringify(body) : undefined,
     });
 
@@ -42,6 +66,24 @@ export class AuthService {
     }
 
     return await response.json();
+  }
+
+  // Session management methods
+  static async checkAuthStatus(): Promise<UserSession> {
+    try {
+      return await this.apiCall('/api/auth/status');
+    } catch (error) {
+      console.error('Failed to check auth status:', error);
+      return { authenticated: false };
+    }
+  }
+
+  static async getUserProfile(): Promise<UserProfile> {
+    return await this.apiCall('/api/auth/me');
+  }
+
+  static async logout(): Promise<void> {
+    await this.apiCall('/api/auth/logout', 'POST');
   }
 
   static async register(username: string): Promise<CredentialData> {

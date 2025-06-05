@@ -4,6 +4,10 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import pg from 'pg';
 import dotenv from 'dotenv';
+import session from 'express-session';
+import RedisStore from 'connect-redis';
+import { createClient } from 'redis';
+import { v4 as uuidv4 } from 'uuid';
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -22,7 +26,12 @@ const PORT = process.env.PORT || 3000;
 // Configuration from environment variables
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const DATABASE_URL = process.env.DATABASE_URL;
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+const SESSION_SECRET =
+  process.env.SESSION_SECRET ||
+  'your-super-secret-session-key-change-in-production';
+const SESSION_MAX_AGE = parseInt(process.env.SESSION_MAX_AGE) || 604800000; // 1 week in milliseconds
 const RP_ID =
   process.env.RP_ID || (NODE_ENV === 'production' ? undefined : 'localhost');
 const RP_NAME = process.env.RP_NAME || 'Passkeys Demo';
@@ -33,10 +42,42 @@ const pool = new Pool({
   connectionString: DATABASE_URL,
 });
 
+// Redis connection
+const redisClient = createClient({
+  url: REDIS_URL,
+});
+
+redisClient.on('error', (err) => {
+  console.error('Redis Client Error:', err);
+});
+
+redisClient.on('connect', () => {
+  console.log('Connected to Redis');
+});
+
+await redisClient.connect();
+
 // Middleware
 app.use(
   helmet({
     contentSecurityPolicy: false, // Disable for development
+  })
+);
+
+// Session configuration with Redis store
+app.use(
+  session({
+    store: new RedisStore({ client: redisClient }),
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    name: 'passkeys.sid',
+    cookie: {
+      secure: NODE_ENV === 'production', // Only send cookies over HTTPS in production
+      httpOnly: true, // Prevent XSS attacks
+      maxAge: SESSION_MAX_AGE, // 1 week
+      sameSite: NODE_ENV === 'production' ? 'strict' : 'lax',
+    },
   })
 );
 
@@ -56,47 +97,71 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// In-memory storage for challenges (in production, use Redis or similar)
-const challenges = new Map();
-
-// Challenge cleanup - remove challenges older than 5 minutes
+// Session-based challenge storage (replaces in-memory Map)
 const CHALLENGE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
-const challengeTimestamps = new Map();
 
-function cleanupExpiredChallenges() {
+// Helper function to store challenge in session
+function storeChallenge(session, challenge) {
+  session.challenge = challenge;
+  session.challengeTimestamp = Date.now();
+}
+
+// Helper function to get and validate challenge from session
+function getAndValidateChallenge(session) {
+  if (!session.challenge || !session.challengeTimestamp) {
+    return null;
+  }
+
   const now = Date.now();
-  for (const [key, timestamp] of challengeTimestamps) {
-    if (now - timestamp > CHALLENGE_TIMEOUT) {
-      challenges.delete(key);
-      challengeTimestamps.delete(key);
-    }
+  if (now - session.challengeTimestamp > CHALLENGE_TIMEOUT) {
+    // Challenge expired
+    delete session.challenge;
+    delete session.challengeTimestamp;
+    return null;
   }
-}
 
-// Clean up expired challenges every minute
-setInterval(cleanupExpiredChallenges, 60 * 1000);
+  const challenge = session.challenge;
+  // Remove challenge after use (one-time use)
+  delete session.challenge;
+  delete session.challengeTimestamp;
 
-// Helper function to store challenge with timestamp
-function storeChallenge(key, challenge) {
-  challenges.set(key, challenge);
-  challengeTimestamps.set(key, Date.now());
-}
-
-// Helper function to get and remove challenge
-function getAndRemoveChallenge(key) {
-  const challenge = challenges.get(key);
-  if (challenge) {
-    challenges.delete(key);
-    challengeTimestamps.delete(key);
-  }
   return challenge;
+}
+
+// Middleware to check if user is authenticated
+function requireAuth(req, res, next) {
+  if (!req.session.userId) {
+    return res.status(401).json({
+      error: 'Authentication required',
+      message: 'Please log in to access this resource',
+    });
+  }
+  next();
+}
+
+// Helper function to create user session
+function createUserSession(req, userId, username) {
+  req.session.userId = userId;
+  req.session.username = username;
+  req.session.loginTime = Date.now();
+  req.session.sessionId = uuidv4();
+}
+
+// Helper function to destroy user session
+function destroyUserSession(req) {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Session destruction error:', err);
+    }
+  });
 }
 
 // Helper functions
 async function getUserByUsername(username) {
-  const result = await pool.query('SELECT * FROM users WHERE LOWER(username) = LOWER($1)', [
-    username,
-  ]);
+  const result = await pool.query(
+    'SELECT * FROM users WHERE LOWER(username) = LOWER($1)',
+    [username]
+  );
   return result.rows[0];
 }
 
@@ -309,7 +374,7 @@ app.post('/api/register/begin', async (req, res) => {
     });
 
     // Store challenge for verification
-    storeChallenge(username.toLowerCase(), options.challenge);
+    storeChallenge(req.session, options.challenge);
 
     // Send raw options for SimpleWebAuthn browser library
     console.log('=== DETAILED REGISTRATION OPTIONS ===');
@@ -356,7 +421,7 @@ app.post('/api/register/complete', async (req, res) => {
         .json({ error: 'Username and credential are required' });
     }
 
-    const expectedChallenge = getAndRemoveChallenge(username.toLowerCase());
+    const expectedChallenge = getAndValidateChallenge(req.session);
     if (!expectedChallenge) {
       console.log('No challenge found for username:', username);
       return res.status(400).json({ error: 'Invalid or expired challenge' });
@@ -372,7 +437,7 @@ app.post('/api/register/complete', async (req, res) => {
     if (existingCredential) {
       console.log('Credential already exists, skipping save');
       // Clean up challenge
-      getAndRemoveChallenge(username.toLowerCase());
+      getAndValidateChallenge(req.session);
 
       return res.json({
         verified: true,
@@ -411,7 +476,7 @@ app.post('/api/register/complete', async (req, res) => {
       if (duplicateCheck) {
         console.log('Credential created by another request, skipping save');
         // Clean up challenge
-        getAndRemoveChallenge(username.toLowerCase());
+        getAndValidateChallenge(req.session);
 
         return res.json({
           verified: true,
@@ -431,7 +496,10 @@ app.post('/api/register/complete', async (req, res) => {
       );
 
       // Clean up challenge
-      getAndRemoveChallenge(username.toLowerCase());
+      getAndValidateChallenge(req.session);
+
+      // Create user session after successful registration
+      createUserSession(req, user.id, user.username);
 
       console.log('Registration successful for user:', username);
 
@@ -439,6 +507,7 @@ app.post('/api/register/complete', async (req, res) => {
         verified: true,
         credentialId: credential.id,
         username: user.username,
+        sessionId: req.session.sessionId,
       });
     } else {
       console.log('Verification failed');
@@ -455,7 +524,13 @@ app.post('/api/register/complete', async (req, res) => {
       const { username } = req.body;
 
       // Clean up challenge
-      getAndRemoveChallenge(username.toLowerCase());
+      getAndValidateChallenge(req.session);
+
+      // Get user for session creation
+      const user = await getUserByUsername(username);
+      if (user) {
+        createUserSession(req, user.id, user.username);
+      }
 
       // Determine which constraint was violated
       let message = 'Credential already registered';
@@ -470,6 +545,7 @@ app.post('/api/register/complete', async (req, res) => {
         credentialId: req.body.credential?.id,
         username: username,
         message: message,
+        sessionId: req.session.sessionId,
       });
     }
 
@@ -488,7 +564,7 @@ app.post('/api/authenticate/begin', async (req, res) => {
     });
 
     // Store challenge for verification
-    storeChallenge('auth_' + options.challenge, options.challenge);
+    storeChallenge(req.session, options.challenge);
 
     // Send raw options for SimpleWebAuthn browser library
     console.log(
@@ -555,9 +631,7 @@ app.post('/api/authenticate/complete', async (req, res) => {
       ).toString('utf8')
     );
 
-    const expectedChallenge = getAndRemoveChallenge(
-      'auth_' + clientDataJSON.challenge
-    );
+    const expectedChallenge = getAndValidateChallenge(req.session);
     if (!expectedChallenge) {
       return res.status(400).json({ error: 'Invalid or expired challenge' });
     }
@@ -582,11 +656,16 @@ app.post('/api/authenticate/complete', async (req, res) => {
       );
 
       // Clean up challenge
-      getAndRemoveChallenge('auth_' + clientDataJSON.challenge);
+      getAndValidateChallenge(req.session);
+
+      // Get user for session creation
+      const user = await getUserByUsername(storedCredential.username);
+      createUserSession(req, user.id, user.username);
 
       res.json({
         verified: true,
         username: storedCredential.username,
+        sessionId: req.session.sessionId,
       });
     } else {
       res.status(400).json({ error: 'Authentication verification failed' });
@@ -597,10 +676,76 @@ app.post('/api/authenticate/complete', async (req, res) => {
   }
 });
 
+// Get current user session info
+app.get('/api/auth/me', requireAuth, async (req, res) => {
+  try {
+    const user = await pool.query(
+      'SELECT id, username, created_at FROM users WHERE id = $1',
+      [req.session.userId]
+    );
+
+    if (!user.rows[0]) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      user: {
+        id: user.rows[0].id,
+        username: user.rows[0].username,
+        createdAt: user.rows[0].created_at,
+      },
+      session: {
+        sessionId: req.session.sessionId,
+        loginTime: req.session.loginTime,
+        expiresAt: new Date(Date.now() + SESSION_MAX_AGE).toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Get user profile error:', error);
+    res.status(500).json({ error: 'Failed to get user profile' });
+  }
+});
+
+// Logout endpoint
+app.post('/api/auth/logout', requireAuth, (req, res) => {
+  const username = req.session.username;
+
+  destroyUserSession(req);
+
+  res.json({
+    message: 'Logged out successfully',
+    username: username,
+  });
+});
+
+// Check if user is authenticated
+app.get('/api/auth/status', (req, res) => {
+  if (req.session.userId) {
+    res.json({
+      authenticated: true,
+      userId: req.session.userId,
+      username: req.session.username,
+      sessionId: req.session.sessionId,
+      loginTime: req.session.loginTime,
+      expiresAt: new Date(Date.now() + SESSION_MAX_AGE).toISOString(),
+    });
+  } else {
+    res.json({
+      authenticated: false,
+    });
+  }
+});
+
 // Get user credentials (for debugging)
-app.get('/api/users/:username/credentials', async (req, res) => {
+app.get('/api/users/:username/credentials', requireAuth, async (req, res) => {
   try {
     const { username } = req.params;
+
+    // Only allow users to see their own credentials
+    if (req.session.username !== username) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
     const user = await getUserByUsername(username);
 
     if (!user) {
@@ -653,4 +798,3 @@ process.on('SIGINT', async () => {
   await pool.end();
   process.exit(0);
 });
- 

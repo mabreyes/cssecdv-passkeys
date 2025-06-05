@@ -1,5 +1,7 @@
+/* eslint-disable no-console */
 import { AuthService } from './services/AuthService.js';
-import { StateManager } from './services/StateManager.js';
+import { sessionManager } from './services/SessionManager.js';
+import type { SessionEvent } from './services/SessionManager.js';
 import { MessageService } from './services/MessageService.js';
 import { UIRenderer } from './services/UIRenderer.js';
 import { EventHandler } from './services/EventHandler.js';
@@ -7,7 +9,6 @@ import {
   ValidationService,
   type ValidationResult,
 } from './services/ValidationService.js';
-import type { LoginState } from './services/StateManager.js';
 import type { EventCallbacks } from './services/EventHandler.js';
 
 export class PasskeysApp {
@@ -20,10 +21,11 @@ export class PasskeysApp {
   private validationTimeout: number | null = null;
   // EventHandler is used for its side effects (setting up event listeners)
   private eventHandler!: EventHandler;
+  private sessionUnsubscribe?: () => void;
 
   constructor() {
     this.setupGlobalErrorHandlers();
-    this.restoreLoginState();
+    this.initializeSessionManager();
     this.initializeEventHandler();
     this.init();
   }
@@ -65,20 +67,64 @@ export class PasskeysApp {
     });
   }
 
-  private restoreLoginState(): void {
-    const state = StateManager.restore();
-    if (state) {
-      this.isLoggedIn = state.isLoggedIn;
-      this.username = state.username || '';
+  private initializeSessionManager(): void {
+    // Set up session event listener
+    this.sessionUnsubscribe = sessionManager.addEventListener(
+      (event: SessionEvent) => {
+        this.handleSessionEvent(event);
+      }
+    );
+
+    // Initialize state from current session
+    const session = sessionManager.getSession();
+    if (session.authenticated) {
+      this.isLoggedIn = true;
+      this.username = session.username || '';
+    } else {
+      this.isLoggedIn = false;
+      this.username = '';
     }
   }
 
-  private saveLoginState(): void {
-    const state: LoginState = {
-      isLoggedIn: this.isLoggedIn,
-      username: this.username,
-    };
-    StateManager.save(state);
+  private handleSessionEvent(event: SessionEvent): void {
+    console.log('Session event received:', event.type, event.session);
+
+    switch (event.type) {
+      case 'login':
+        this.isLoggedIn = true;
+        this.username = event.session.username || '';
+        MessageService.show('Login successful!', 'success');
+        this.render();
+        break;
+
+      case 'logout':
+        this.isLoggedIn = false;
+        this.username = '';
+        MessageService.show('Logged out successfully', 'info');
+        this.render();
+        break;
+
+      case 'sessionExpired':
+        this.isLoggedIn = false;
+        this.username = '';
+        MessageService.show(
+          'Your session has expired. Please log in again.',
+          'error'
+        );
+        this.render();
+        break;
+
+      case 'sessionChange':
+        if (event.session.authenticated) {
+          this.isLoggedIn = true;
+          this.username = event.session.username || '';
+        } else {
+          this.isLoggedIn = false;
+          this.username = '';
+        }
+        this.render();
+        break;
+    }
   }
 
   private initializeEventHandler(): void {
@@ -107,7 +153,9 @@ export class PasskeysApp {
   }
 
   private setupAutofillPrevention(): void {
-    const usernameInput = document.querySelector('#username') as any;
+    const usernameInput = document.querySelector(
+      '#username'
+    ) as HTMLInputElement;
     if (usernameInput) {
       // Remove readonly on focus to allow typing
       usernameInput.addEventListener('focus', () => {
@@ -185,7 +233,9 @@ export class PasskeysApp {
     }
 
     // Get current username value
-    const usernameInput = document.querySelector('#username') as any;
+    const usernameInput = document.querySelector(
+      '#username'
+    ) as HTMLInputElement;
     const hasValue = usernameInput && usernameInput.value.trim().length > 0;
 
     // Add new validation feedback if needed
@@ -246,10 +296,14 @@ export class PasskeysApp {
   }
 
   private updateRegisterButtonState(): void {
-    const registerBtn = document.querySelector('#register-btn') as any;
+    const registerBtn = document.querySelector(
+      '#register-btn'
+    ) as HTMLButtonElement;
     if (!registerBtn) return;
 
-    const usernameInput = document.querySelector('#username') as any;
+    const usernameInput = document.querySelector(
+      '#username'
+    ) as HTMLInputElement;
     const hasValue = usernameInput && usernameInput.value.trim().length > 0;
 
     const shouldDisable =
@@ -280,7 +334,7 @@ export class PasskeysApp {
   }
 
   private updateLoginButtonState(): void {
-    const loginBtn = document.querySelector('#login-btn') as any;
+    const loginBtn = document.querySelector('#login-btn') as HTMLButtonElement;
     if (!loginBtn) return;
 
     const isLoading = this.isRegistering || this.isAuthenticating;
@@ -327,7 +381,7 @@ export class PasskeysApp {
 
     // Validate username before proceeding
     if (!username || !username.trim()) {
-        MessageService.show('Please enter a username', 'error');
+      MessageService.show('Please enter a username', 'error');
       return;
     }
 
@@ -373,14 +427,11 @@ export class PasskeysApp {
 
       MessageService.show('Creating passkey...', 'info');
 
-      await AuthService.register(username);
+      await sessionManager.register(username);
 
-      this.username = username;
-      this.isLoggedIn = true;
-      this.saveLoginState();
-
+      // Session state will be updated via session events
+      // No need to manually update state here
       MessageService.show('Passkey created successfully!', 'success');
-      this.render();
     } catch (error) {
       const errorMessage = (error as Error).message;
       console.error('Registration error:', errorMessage);
@@ -424,10 +475,10 @@ export class PasskeysApp {
         );
       } else {
         // Generic error with suggestion
-      MessageService.show(
+        MessageService.show(
           `${errorMessage} Please try again or refresh the page if the issue persists.`,
-        'error'
-      );
+          'error'
+        );
       }
     } finally {
       this.isRegistering = false; // Reset registration state
@@ -487,16 +538,12 @@ export class PasskeysApp {
 
       MessageService.show('Authenticating with passkey...', 'info');
 
-      console.log('Calling AuthService.login()');
-      const username = await AuthService.login();
-      console.log('AuthService.login() succeeded, username:', username);
+      console.log('Calling sessionManager.login()');
+      const username = await sessionManager.login();
+      console.log('sessionManager.login() succeeded, username:', username);
 
-      this.username = username;
-      this.isLoggedIn = true;
-      this.saveLoginState();
-
-      MessageService.show('Login successful!', 'success');
-      this.render();
+      // Session state will be updated via session events
+      // No need to manually update state here
       console.log('Login completed successfully');
     } catch (error) {
       console.log('=== LOGIN ERROR CAUGHT ===');
@@ -575,12 +622,25 @@ export class PasskeysApp {
     }
   }
 
-  private handleLogout(): void {
-    this.isLoggedIn = false;
-    this.username = '';
-    this.saveLoginState();
+  private async handleLogout(): Promise<void> {
+    try {
+      await sessionManager.logout();
+      // Session state will be updated via session events
+      // No need to manually update state here
+    } catch (error) {
+      console.error('Logout error:', error);
+      MessageService.show('Logout failed. Please try again.', 'error');
+    }
+  }
 
-    MessageService.show('Logged out successfully', 'info');
-    this.render();
+  // Cleanup method for proper resource management
+  public destroy(): void {
+    if (this.sessionUnsubscribe) {
+      this.sessionUnsubscribe();
+    }
+
+    if (this.validationTimeout) {
+      clearTimeout(this.validationTimeout);
+    }
   }
 }
