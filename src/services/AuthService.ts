@@ -37,6 +37,8 @@ export class AuthService {
   private static readonly API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
+  private static readonly SESSION_TOKEN_KEY = 'passkeys_session_token';
+
   static checkSupport(): boolean {
     return !!window.PublicKeyCredential;
   }
@@ -46,16 +48,50 @@ export class AuthService {
     return hostname === 'localhost' ? 'localhost' : hostname;
   }
 
+  // Session token management
+  private static getSessionToken(): string | null {
+    try {
+      return localStorage.getItem(this.SESSION_TOKEN_KEY);
+    } catch (error) {
+      console.error('Failed to get session token from localStorage:', error);
+      return null;
+    }
+  }
+
+  private static setSessionToken(token: string): void {
+    try {
+      localStorage.setItem(this.SESSION_TOKEN_KEY, token);
+    } catch (error) {
+      console.error('Failed to save session token to localStorage:', error);
+    }
+  }
+
+  private static removeSessionToken(): void {
+    try {
+      localStorage.removeItem(this.SESSION_TOKEN_KEY);
+    } catch (error) {
+      console.error('Failed to remove session token from localStorage:', error);
+    }
+  }
+
   private static async apiCall(
     endpoint: string,
     method: string = 'GET',
     body?: object
   ) {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add session token if available
+    const sessionToken = this.getSessionToken();
+    if (sessionToken) {
+      headers['Authorization'] = `Bearer ${sessionToken}`;
+    }
+
     const response = await fetch(`${this.API_BASE_URL}${endpoint}`, {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       credentials: 'include', // Include cookies for session management
       body: body ? JSON.stringify(body) : undefined,
     });
@@ -83,7 +119,15 @@ export class AuthService {
   }
 
   static async logout(): Promise<void> {
-    await this.apiCall('/api/auth/logout', 'POST');
+    const sessionToken = this.getSessionToken();
+
+    // Include session token in logout request if available
+    const body = sessionToken ? { sessionToken } : undefined;
+
+    await this.apiCall('/api/auth/logout', 'POST', body);
+
+    // Remove session token from localStorage
+    this.removeSessionToken();
   }
 
   static async register(username: string): Promise<CredentialData> {
@@ -212,6 +256,12 @@ export class AuthService {
         throw new Error(
           'Passkey registration could not be verified. Please try again.'
         );
+      }
+
+      // Store session token if provided
+      if (verificationResult.sessionToken) {
+        this.setSessionToken(verificationResult.sessionToken);
+        console.log('Session token saved for cross-domain persistence');
       }
 
       console.log('Registration successful!');
@@ -352,6 +402,12 @@ export class AuthService {
         throw new Error(
           'Passkey verification failed. Please try again or register a new passkey.'
         );
+      }
+
+      // Store session token if provided
+      if (verificationResult.sessionToken) {
+        this.setSessionToken(verificationResult.sessionToken);
+        console.log('Session token saved for cross-domain persistence');
       }
 
       console.log('Authentication successful!');

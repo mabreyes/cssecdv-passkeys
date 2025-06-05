@@ -26,7 +26,10 @@ export class SessionManager {
 
   private async initializeSession() {
     try {
+      console.log('Initializing session...');
       const session = await AuthService.checkAuthStatus();
+      console.log('Initial session check result:', session);
+
       this.setSession(session, 'sessionChange');
 
       if (session.authenticated) {
@@ -164,19 +167,9 @@ export class SessionManager {
   public async login(): Promise<string> {
     const username = await AuthService.login();
 
-    // Create session directly from successful login response
-    // instead of calling refreshSession() which requires working cookies
-    const session: UserSession = {
-      authenticated: true,
-      username: username,
-      sessionId: `temp-${Date.now()}`, // Temporary until proper session sync
-      loginTime: Date.now(),
-      expiresAt: new Date(Date.now() + 604800000).toISOString(), // 1 week
-    };
-    this.setSession(session, 'login');
-
-    // Try to sync with server session in background (after cookies have time to settle)
-    setTimeout(() => this.refreshSession(), 2000);
+    // Immediately refresh session to get the proper session data with token
+    // This should work now because AuthService stores the session token
+    await this.refreshSession();
 
     return username;
   }
@@ -184,19 +177,9 @@ export class SessionManager {
   public async register(username: string) {
     const result = await AuthService.register(username);
 
-    // Create session directly from successful registration response
-    // instead of calling refreshSession() which requires working cookies
-    const session: UserSession = {
-      authenticated: true,
-      username: result.username,
-      sessionId: `temp-${Date.now()}`, // Temporary until proper session sync
-      loginTime: Date.now(),
-      expiresAt: new Date(Date.now() + 604800000).toISOString(), // 1 week
-    };
-    this.setSession(session, 'login');
-
-    // Try to sync with server session in background (after cookies have time to settle)
-    setTimeout(() => this.refreshSession(), 2000);
+    // Immediately refresh session to get the proper session data with token
+    // This should work now because AuthService stores the session token
+    await this.refreshSession();
 
     return result;
   }
@@ -215,24 +198,9 @@ export class SessionManager {
 
   public async refreshSession(): Promise<void> {
     try {
+      console.log('Refreshing session...');
       const session = await AuthService.checkAuthStatus();
-
-      // Don't override a recent successful login with a failed server check
-      // (gives time for cross-domain cookies to work)
-      if (
-        !session.authenticated &&
-        this.session.authenticated &&
-        this.session.sessionId?.startsWith('temp-')
-      ) {
-        const loginTime = this.session.loginTime || 0;
-        const timeSinceLogin = Date.now() - loginTime;
-
-        // If login was within last 30 seconds, don't override with server failure
-        if (timeSinceLogin < 30000) {
-          console.log('Ignoring server auth check - recent manual login');
-          return;
-        }
-      }
+      console.log('Session refresh result:', session);
 
       this.setSession(session, 'sessionChange');
 
@@ -247,21 +215,6 @@ export class SessionManager {
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Failed to refresh session:', error);
-
-      // Don't override a recent successful login with an error
-      if (
-        this.session.authenticated &&
-        this.session.sessionId?.startsWith('temp-')
-      ) {
-        const loginTime = this.session.loginTime || 0;
-        const timeSinceLogin = Date.now() - loginTime;
-
-        if (timeSinceLogin < 30000) {
-          console.log('Ignoring server auth error - recent manual login');
-          return;
-        }
-      }
-
       this.setSession({ authenticated: false }, 'sessionChange');
     }
   }

@@ -167,15 +167,31 @@ async function getAndValidateChallenge(token) {
   }
 }
 
-// Middleware to check if user is authenticated
-function requireAuth(req, res, next) {
-  if (!req.session.userId) {
-    return res.status(401).json({
-      error: 'Authentication required',
-      message: 'Please log in to access this resource',
-    });
+// Middleware to check if user is authenticated (supports both session cookies and tokens)
+async function requireAuth(req, res, next) {
+  // First try session cookie
+  if (req.session.userId) {
+    return next();
   }
-  next();
+
+  // If no session cookie, try session token
+  const sessionToken =
+    req.headers.authorization?.replace('Bearer ', '') ||
+    req.body.sessionToken ||
+    req.query.sessionToken;
+  if (sessionToken) {
+    const sessionData = await validateSessionToken(sessionToken);
+    if (sessionData) {
+      // Attach session data to request for use in route handlers
+      req.sessionData = sessionData;
+      return next();
+    }
+  }
+
+  return res.status(401).json({
+    error: 'Authentication required',
+    message: 'Please log in to access this resource',
+  });
 }
 
 // Helper function to create user session
@@ -184,6 +200,93 @@ function createUserSession(req, userId, username) {
   req.session.username = username;
   req.session.loginTime = Date.now();
   req.session.sessionId = uuidv4();
+}
+
+// Session token storage for cross-domain support
+const SESSION_TOKEN_TIMEOUT = 7 * 24 * 60 * 60 * 1000; // 1 week in milliseconds
+
+// Helper function to create session token
+async function createSessionToken(userId, username) {
+  const token = uuidv4();
+  const key = `session:${token}`;
+
+  const sessionData = {
+    userId: userId,
+    username: username,
+    loginTime: Date.now(),
+    sessionId: uuidv4(),
+  };
+
+  console.log('=== CREATING SESSION TOKEN ===');
+  console.log('Session token:', token);
+  console.log('User ID:', userId);
+  console.log('Username:', username);
+
+  try {
+    await redisClient.setEx(
+      key,
+      Math.floor(SESSION_TOKEN_TIMEOUT / 1000),
+      JSON.stringify(sessionData)
+    );
+    console.log('Session token stored in Redis');
+    return token;
+  } catch (error) {
+    console.error('Redis error storing session token:', error);
+    throw new Error('Failed to create session token - Redis unavailable');
+  }
+}
+
+// Helper function to validate session token
+async function validateSessionToken(token) {
+  console.log('=== VALIDATING SESSION TOKEN ===');
+  console.log('Session token:', token);
+
+  if (!token) {
+    console.log('No session token provided');
+    return null;
+  }
+
+  const key = `session:${token}`;
+
+  try {
+    const sessionDataStr = await redisClient.get(key);
+    console.log('Retrieved session data:', sessionDataStr ? 'YES' : 'NO');
+
+    if (!sessionDataStr) {
+      console.log('No session found for token or expired');
+      return null;
+    }
+
+    const sessionData = JSON.parse(sessionDataStr);
+    console.log('Session data parsed:', sessionData);
+
+    // Refresh token expiration
+    await redisClient.setEx(
+      key,
+      Math.floor(SESSION_TOKEN_TIMEOUT / 1000),
+      sessionDataStr
+    );
+    console.log('Session token expiration refreshed');
+
+    return sessionData;
+  } catch (error) {
+    console.error('Redis error validating session token:', error);
+    return null;
+  }
+}
+
+// Helper function to delete session token
+async function deleteSessionToken(token) {
+  if (!token) return;
+
+  const key = `session:${token}`;
+
+  try {
+    await redisClient.del(key);
+    console.log('Session token deleted from Redis');
+  } catch (error) {
+    console.error('Redis error deleting session token:', error);
+  }
 }
 
 // Helper function to destroy user session
@@ -468,11 +571,9 @@ app.post('/api/register/complete', async (req, res) => {
     console.log('Registration complete - Challenge token:', challengeToken);
 
     if (!username || !credential || !challengeToken) {
-      return res
-        .status(400)
-        .json({
-          error: 'Username, credential, and challenge token are required',
-        });
+      return res.status(400).json({
+        error: 'Username, credential, and challenge token are required',
+      });
     }
 
     const expectedChallenge = await getAndValidateChallenge(challengeToken);
@@ -548,6 +649,15 @@ app.post('/api/register/complete', async (req, res) => {
       // Create user session after successful registration
       createUserSession(req, user.id, user.username);
 
+      // Create session token for cross-domain support
+      let sessionToken;
+      try {
+        sessionToken = await createSessionToken(user.id, user.username);
+      } catch (error) {
+        console.error('Failed to create session token:', error);
+        // Continue without token - fallback to regular session
+      }
+
       console.log('Registration successful for user:', username);
 
       res.json({
@@ -555,6 +665,7 @@ app.post('/api/register/complete', async (req, res) => {
         credentialId: credential.id,
         username: user.username,
         sessionId: req.session.sessionId,
+        sessionToken: sessionToken, // Include session token for frontend
       });
     } else {
       console.log('Verification failed');
@@ -572,8 +683,17 @@ app.post('/api/register/complete', async (req, res) => {
 
       // Get user for session creation
       const user = await getUserByUsername(username);
+      let sessionToken;
       if (user) {
         createUserSession(req, user.id, user.username);
+
+        // Create session token for cross-domain support
+        try {
+          sessionToken = await createSessionToken(user.id, user.username);
+        } catch (error) {
+          console.error('Failed to create session token:', error);
+          // Continue without token - fallback to regular session
+        }
       }
 
       // Determine which constraint was violated
@@ -590,6 +710,7 @@ app.post('/api/register/complete', async (req, res) => {
         username: username,
         message: message,
         sessionId: req.session.sessionId,
+        sessionToken: sessionToken, // Include session token for frontend
       });
     }
 
@@ -718,10 +839,20 @@ app.post('/api/authenticate/complete', async (req, res) => {
       const user = await getUserByUsername(storedCredential.username);
       createUserSession(req, user.id, user.username);
 
+      // Create session token for cross-domain support
+      let sessionToken;
+      try {
+        sessionToken = await createSessionToken(user.id, user.username);
+      } catch (error) {
+        console.error('Failed to create session token:', error);
+        // Continue without token - fallback to regular session
+      }
+
       res.json({
         verified: true,
         username: storedCredential.username,
         sessionId: req.session.sessionId,
+        sessionToken: sessionToken, // Include session token for frontend
       });
     } else {
       res.status(400).json({ error: 'Authentication verification failed' });
@@ -735,14 +866,24 @@ app.post('/api/authenticate/complete', async (req, res) => {
 // Get current user session info
 app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
+    // Get user ID from either session cookie or session token
+    const userId = req.session.userId || req.sessionData?.userId;
+    const sessionId = req.session.sessionId || req.sessionData?.sessionId;
+    const loginTime = req.session.loginTime || req.sessionData?.loginTime;
+
     const user = await pool.query(
       'SELECT id, username, created_at FROM users WHERE id = $1',
-      [req.session.userId]
+      [userId]
     );
 
     if (!user.rows[0]) {
       return res.status(404).json({ error: 'User not found' });
     }
+
+    // Calculate expiration based on session type
+    const expiresAt = req.session.userId
+      ? new Date(Date.now() + SESSION_MAX_AGE).toISOString()
+      : new Date(loginTime + SESSION_TOKEN_TIMEOUT).toISOString();
 
     res.json({
       user: {
@@ -751,9 +892,9 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
         createdAt: user.rows[0].created_at,
       },
       session: {
-        sessionId: req.session.sessionId,
-        loginTime: req.session.loginTime,
-        expiresAt: new Date(Date.now() + SESSION_MAX_AGE).toISOString(),
+        sessionId: sessionId,
+        loginTime: loginTime,
+        expiresAt: expiresAt,
       },
     });
   } catch (error) {
@@ -762,11 +903,26 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
   }
 });
 
-// Logout endpoint
-app.post('/api/auth/logout', requireAuth, (req, res) => {
-  const username = req.session.username;
+// Logout endpoint (supports both session cookies and tokens)
+app.post('/api/auth/logout', async (req, res) => {
+  let username = 'Unknown';
 
-  destroyUserSession(req);
+  // Handle session cookie logout
+  if (req.session.userId) {
+    username = req.session.username || 'Unknown';
+    destroyUserSession(req);
+  }
+
+  // Handle session token logout
+  const sessionToken =
+    req.headers.authorization?.replace('Bearer ', '') || req.body.sessionToken;
+  if (sessionToken) {
+    const sessionData = await validateSessionToken(sessionToken);
+    if (sessionData) {
+      username = sessionData.username;
+    }
+    await deleteSessionToken(sessionToken);
+  }
 
   res.json({
     message: 'Logged out successfully',
@@ -774,10 +930,11 @@ app.post('/api/auth/logout', requireAuth, (req, res) => {
   });
 });
 
-// Check if user is authenticated
-app.get('/api/auth/status', (req, res) => {
+// Check if user is authenticated (supports both session cookies and tokens)
+app.get('/api/auth/status', async (req, res) => {
+  // First try session cookie
   if (req.session.userId) {
-    res.json({
+    return res.json({
       authenticated: true,
       userId: req.session.userId,
       username: req.session.username,
@@ -785,11 +942,30 @@ app.get('/api/auth/status', (req, res) => {
       loginTime: req.session.loginTime,
       expiresAt: new Date(Date.now() + SESSION_MAX_AGE).toISOString(),
     });
-  } else {
-    res.json({
-      authenticated: false,
-    });
   }
+
+  // If no session cookie, try session token
+  const sessionToken =
+    req.headers.authorization?.replace('Bearer ', '') || req.query.sessionToken;
+  if (sessionToken) {
+    const sessionData = await validateSessionToken(sessionToken);
+    if (sessionData) {
+      return res.json({
+        authenticated: true,
+        userId: sessionData.userId,
+        username: sessionData.username,
+        sessionId: sessionData.sessionId,
+        loginTime: sessionData.loginTime,
+        expiresAt: new Date(
+          sessionData.loginTime + SESSION_TOKEN_TIMEOUT
+        ).toISOString(),
+      });
+    }
+  }
+
+  res.json({
+    authenticated: false,
+  });
 });
 
 // Get user credentials (for debugging)
