@@ -77,6 +77,7 @@ app.use(
       httpOnly: true, // Prevent XSS attacks
       maxAge: SESSION_MAX_AGE, // 1 week
       sameSite: NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-origin in production
+      domain: NODE_ENV === 'production' ? '.marcr.xyz' : undefined, // Allow subdomain sharing in production
     },
   })
 );
@@ -102,19 +103,30 @@ const CHALLENGE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 // Helper function to store challenge in session
 function storeChallenge(session, challenge) {
+  console.log('=== STORING CHALLENGE ===');
+  console.log('Session ID:', session.id);
+  console.log('Challenge:', challenge);
   session.challenge = challenge;
   session.challengeTimestamp = Date.now();
+  console.log('Challenge stored in session');
 }
 
 // Helper function to get and validate challenge from session
 function getAndValidateChallenge(session) {
+  console.log('=== RETRIEVING CHALLENGE ===');
+  console.log('Session ID:', session.id);
+  console.log('Session challenge:', session.challenge);
+  console.log('Session challengeTimestamp:', session.challengeTimestamp);
+
   if (!session.challenge || !session.challengeTimestamp) {
+    console.log('No challenge or timestamp found in session');
     return null;
   }
 
   const now = Date.now();
   if (now - session.challengeTimestamp > CHALLENGE_TIMEOUT) {
     // Challenge expired
+    console.log('Challenge expired');
     delete session.challenge;
     delete session.challengeTimestamp;
     return null;
@@ -124,6 +136,7 @@ function getAndValidateChallenge(session) {
   // Remove challenge after use (one-time use)
   delete session.challenge;
   delete session.challengeTimestamp;
+  console.log('Challenge retrieved and cleared from session');
 
   return challenge;
 }
@@ -374,7 +387,10 @@ app.post('/api/register/begin', async (req, res) => {
     });
 
     // Store challenge for verification
+    console.log('=== SESSION INFO AT REGISTER BEGIN ===');
+    console.log('Session before storing challenge:', req.session.id);
     storeChallenge(req.session, options.challenge);
+    console.log('Session after storing challenge:', req.session.id);
 
     // Send raw options for SimpleWebAuthn browser library
     console.log('=== DETAILED REGISTRATION OPTIONS ===');
@@ -414,6 +430,8 @@ app.post('/api/register/complete', async (req, res) => {
 
     console.log('Registration complete - Username:', username);
     console.log('Registration complete - Credential received:', credential.id);
+    console.log('=== SESSION INFO AT REGISTER COMPLETE ===');
+    console.log('Session ID at complete:', req.session.id);
 
     if (!username || !credential) {
       return res
