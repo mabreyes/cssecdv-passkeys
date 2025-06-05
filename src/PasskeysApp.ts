@@ -19,6 +19,7 @@ export class PasskeysApp {
   private validationState: ValidationResult = { isValid: false, errors: [] };
   private isValidating: boolean = false;
   private validationTimeout: number | null = null;
+  private isInitializing: boolean = true;
   // EventHandler is used for its side effects (setting up event listeners)
   private eventHandler!: EventHandler;
   private sessionUnsubscribe?: () => void;
@@ -90,6 +91,25 @@ export class PasskeysApp {
     console.log('Session event received:', event.type, event.session);
 
     switch (event.type) {
+      case 'sessionInitialized':
+        this.isInitializing = false;
+        if (event.session.authenticated) {
+          this.isLoggedIn = true;
+          this.username = event.session.username || '';
+        } else {
+          this.isLoggedIn = false;
+          this.username = '';
+        }
+        this.render();
+
+        // Set up initial validation state and event handlers after rendering the real UI
+        setTimeout(() => {
+          this.updateRegisterButtonState();
+          this.updateLoginButtonState();
+          this.setupAutofillPrevention();
+        }, 100);
+        break;
+
       case 'login':
         this.isLoggedIn = true;
         this.username = event.session.username || '';
@@ -115,14 +135,17 @@ export class PasskeysApp {
         break;
 
       case 'sessionChange':
-        if (event.session.authenticated) {
-          this.isLoggedIn = true;
-          this.username = event.session.username || '';
-        } else {
-          this.isLoggedIn = false;
-          this.username = '';
+        // Only handle sessionChange if not during initialization
+        if (!this.isInitializing) {
+          if (event.session.authenticated) {
+            this.isLoggedIn = true;
+            this.username = event.session.username || '';
+          } else {
+            this.isLoggedIn = false;
+            this.username = '';
+          }
+          this.render();
         }
-        this.render();
         break;
     }
   }
@@ -141,15 +164,22 @@ export class PasskeysApp {
   }
 
   private init(): void {
-    this.render();
+    // Show loading state immediately
+    this.renderLoadingState();
     this.checkSupport();
 
-    // Set up initial validation state after render
-    setTimeout(() => {
-      this.updateRegisterButtonState();
-      this.updateLoginButtonState();
-      this.setupAutofillPrevention();
-    }, 100);
+    // If session is already initialized (shouldn't happen but just in case)
+    if (sessionManager.isSessionInitialized()) {
+      this.isInitializing = false;
+      this.render();
+
+      // Set up initial validation state after render
+      setTimeout(() => {
+        this.updateRegisterButtonState();
+        this.updateLoginButtonState();
+        this.setupAutofillPrevention();
+      }, 100);
+    }
   }
 
   private setupAutofillPrevention(): void {
@@ -368,6 +398,23 @@ export class PasskeysApp {
     } catch (error) {
       MessageService.show(`Render error: ${(error as Error).message}`, 'error');
     }
+  }
+
+  private renderLoadingState(): void {
+    const appElement = document.querySelector('#app');
+    if (!appElement) return;
+
+    appElement.innerHTML = `
+      <div class="loading-container">
+        <div class="loading-content">
+          <div class="loading-spinner">
+            <span class="material-symbols-rounded">refresh</span>
+          </div>
+          <h2>Loading Passkeys Demo</h2>
+          <p>Checking authentication status...</p>
+        </div>
+      </div>
+    `;
   }
 
   private async handleRegister(): Promise<void> {

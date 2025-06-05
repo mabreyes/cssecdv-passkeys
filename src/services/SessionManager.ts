@@ -5,7 +5,8 @@ export type SessionEventType =
   | 'login'
   | 'logout'
   | 'sessionChange'
-  | 'sessionExpired';
+  | 'sessionExpired'
+  | 'sessionInitialized';
 
 export interface SessionEvent {
   type: SessionEventType;
@@ -19,6 +20,7 @@ export class SessionManager {
   private listeners: Array<(event: SessionEvent) => void> = [];
   private checkInterval: number | null = null;
   private expirationTimeout: number | null = null;
+  private isInitialized: boolean = false;
 
   constructor() {
     this.initializeSession();
@@ -46,6 +48,15 @@ export class SessionManager {
       // eslint-disable-next-line no-console
       console.error('Failed to initialize session:', error);
       this.setSession({ authenticated: false }, 'sessionChange');
+    } finally {
+      // Mark initialization as complete and emit event
+      this.isInitialized = true;
+      this.emit({
+        type: 'sessionInitialized',
+        session: this.session,
+        profile: this.profile || undefined,
+      });
+      console.log('Session initialization completed');
     }
   }
 
@@ -162,6 +173,10 @@ export class SessionManager {
 
   public isAuthenticated(): boolean {
     return this.session.authenticated;
+  }
+
+  public isSessionInitialized(): boolean {
+    return this.isInitialized;
   }
 
   public async login(): Promise<string> {
