@@ -110,7 +110,7 @@ export class UIRenderer {
         
         <div class="info-card">
           <div class="info">
-            <h3>Username Requirements:</h3>
+            <h3>Username Requirements</h3>
             <md-list>
               <md-list-item>
                 <span class="material-symbols-rounded" slot="start">rule</span>
@@ -138,11 +138,25 @@ export class UIRenderer {
   private static renderDashboard(username: string): string {
     return `
       <div class="dashboard">
+        <div class="dashboard-header">
+          <div class="dashboard-user-info">
+            <p class="dashboard-greeting">Welcome back, <span class="dashboard-username">${username}</span></p>
+          </div>
+        </div>
         <h2>
-          Welcome back, ${username}!
+          You're all set!
           <span class="material-symbols-rounded celebration-icon">celebration</span>
         </h2>
         <p>You are successfully logged in with your passkey.</p>
+        <div class="dashboard-benefits">
+          <h4>Why passkeys are secure:</h4>
+          <ul>
+            <li><strong>Passwordless:</strong> No passwords to steal or forget</li>
+            <li><strong>Phishing resistant:</strong> Works only on this exact site</li>
+            <li><strong>Biometric protection:</strong> Your device authenticates you</li>
+            <li><strong>Industry standard:</strong> Built on WebAuthn/FIDO2 protocols</li>
+          </ul>
+        </div>
         <md-outlined-button 
           id="logout-btn" 
           class="logout-button"
