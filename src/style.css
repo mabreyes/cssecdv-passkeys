@@ -445,6 +445,28 @@ md-filled-text-field {
   font-family: Inter, sans-serif !important;
 }
 
+/* Material Design button spacing */
+md-filled-button,
+md-outlined-button {
+  --_spacing-leading: 24px;
+  --_spacing-trailing: 24px;
+  --_icon-spacing: 8px;
+}
+
+md-filled-button[has-icon],
+md-outlined-button[has-icon] {
+  gap: var(--_icon-spacing);
+}
+
+md-filled-button .material-symbols-rounded,
+md-outlined-button .material-symbols-rounded {
+  font-size: 20px;
+  margin-right: var(--_icon-spacing);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* More specific Material Web component font overrides */
 md-filled-button::part(button),
 md-filled-button::part(label),
@@ -567,10 +589,21 @@ md-filled-text-field *:not(.material-symbols-rounded) {
   --md-list-item-container-shape: var(--md-sys-shape-corner-small);
   --md-list-item-hover-state-layer-color: var(--md-sys-color-primary);
   --md-list-item-hover-state-layer-opacity: 0.04;
+  --md-list-item-leading-space: 16px;
+  --md-list-item-trailing-space: 16px;
+  --md-list-item-icon-size: 24px;
   border-radius: var(--md-sys-shape-corner-small);
   margin-bottom: 8px;
   transition: all 0.2s ease;
   text-align: left;
+}
+
+.info md-list-item .material-symbols-rounded {
+  font-size: var(--md-list-item-icon-size);
+  margin-right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .info md-list-item div[slot='headline'] {
@@ -1130,33 +1163,41 @@ md-filled-text-field *:not(.material-symbols-rounded) {
 .platform-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 16px;
+  margin-top: 24px;
 }
 
 .platform-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
+  gap: 16px;
+  padding: 16px 20px;
   background: var(--md-sys-color-surface-container-high);
   border-radius: 20px;
   border: 1px solid var(--md-sys-color-outline-variant);
   transition: all 0.2s ease;
-}
-
-.platform-item:hover {
-  background: var(--md-sys-color-primary-container);
+  min-height: 72px;
+  box-sizing: border-box;
 }
 
 .platform-item .material-symbols-rounded {
   color: var(--md-sys-color-primary);
-  font-size: 18px;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .platform-item span:last-child {
   color: var(--md-sys-color-on-surface-variant);
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.platform-item:hover {
+  background: var(--md-sys-color-primary-container);
 }
 
 .footer {
@@ -1509,6 +1550,15 @@ md-outlined-button[disabled] {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+.modal-close .material-symbols-rounded {
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .modal-close:hover {
@@ -1562,6 +1612,16 @@ md-outlined-button[disabled] {
   margin: 0 8px;
   z-index: 10;
   padding: 0;
+}
+
+.tab-scroll-btn .material-symbols-rounded {
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 .tab-scroll-btn:hover {
