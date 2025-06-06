@@ -18,6 +18,7 @@ export class EventHandler {
     // Use event delegation since we're re-rendering the DOM
     document.addEventListener('click', async (e) => {
       const target = e.target as HTMLElement;
+      const closeButton = target.closest('#close-modal');
 
       if (target.id === 'register-btn') {
         e.preventDefault();
@@ -43,10 +44,7 @@ export class EventHandler {
         e.preventDefault();
         e.stopPropagation();
         this.openModal();
-      } else if (
-        target.id === 'close-modal' ||
-        target.classList.contains('modal-overlay')
-      ) {
+      } else if (closeButton || target.classList.contains('modal-overlay')) {
         e.preventDefault();
         e.stopPropagation();
         this.closeModal();
