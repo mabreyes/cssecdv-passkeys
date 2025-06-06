@@ -5,6 +5,7 @@ import type { SessionEvent } from './services/SessionManager.js';
 import { MessageService } from './services/MessageService.js';
 import { UIRenderer } from './services/UIRenderer.js';
 import { EventHandler } from './services/EventHandler.js';
+import { SecurityService } from './services/SecurityService.js';
 import {
   ValidationService,
   type ValidationResult,
@@ -28,6 +29,7 @@ export class PasskeysApp {
     this.setupGlobalErrorHandlers();
     this.initializeSessionManager();
     this.initializeEventHandler();
+    SecurityService.initialize(); // Initialize security features
     this.init();
   }
 
