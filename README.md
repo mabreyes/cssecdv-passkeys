@@ -47,6 +47,9 @@ The application uses Redis for secure, scalable session management with the foll
 - **Cross-Tab Sync** - Session state synchronized across browser tabs
 - **Automatic Monitoring** - Frontend monitors session expiration and handles renewal
 - **Server-Side Validation** - All API requests validate session server-side
+- **Challenge Storage** - Temporary storage for WebAuthn challenges
+- **Auto-Cleanup** - Expired sessions and challenges automatically removed
+- **Event System** - Real-time session events (login, logout, expiration)
 
 ### Configuration
 
@@ -57,6 +60,9 @@ environment:
   REDIS_URL: redis://redis:6379
   SESSION_SECRET: your-super-secret-session-key-change-in-production
   SESSION_MAX_AGE: 604800000 # 1 week in milliseconds
+  REDIS_PREFIX: 'sess:'
+  REDIS_SCAN_COUNT: 100
+  CHALLENGE_TTL: 300000 # 5 minutes for WebAuthn challenges
 ```
 
 ### Session API Endpoints
@@ -64,6 +70,8 @@ environment:
 - `GET /api/auth/status` - Check current authentication status
 - `GET /api/auth/me` - Get user profile and session information
 - `POST /api/auth/logout` - Destroy session and logout
+- `POST /api/auth/refresh` - Refresh session before expiration
+- `GET /api/auth/events` - WebSocket endpoint for session events
 
 ### Frontend Session Management
 
@@ -86,6 +94,9 @@ sessionManager.addEventListener((event) => {
     case 'sessionExpired':
       console.log('Session expired, please log in again');
       break;
+    case 'sessionRefreshed':
+      console.log('Session refreshed successfully');
+      break;
   }
 });
 
@@ -93,6 +104,7 @@ sessionManager.addEventListener((event) => {
 await sessionManager.login();
 await sessionManager.register('username');
 await sessionManager.logout();
+await sessionManager.refresh(); // Attempt to refresh before expiration
 ```
 
 ### Security Benefits
@@ -102,6 +114,52 @@ await sessionManager.logout();
 - **Automatic Cleanup** - Redis TTL ensures expired sessions are removed
 - **HttpOnly Cookies** - Prevents XSS access to session data
 - **CSRF Protection** - SameSite cookie attributes prevent CSRF attacks
+- **Secure Challenge Storage** - WebAuthn challenges stored securely with TTL
+- **Cross-Tab Security** - Consistent session state across browser tabs
+- **Audit Trail** - Session creation, refresh, and expiration events logged
+
+### Redis Commands for Debugging
+
+```bash
+# Monitor active sessions
+redis-cli KEYS "sess:*"
+
+# Check session TTL
+redis-cli TTL "sess:${sessionId}"
+
+# View session data
+redis-cli GET "sess:${sessionId}"
+
+# Monitor WebAuthn challenges
+redis-cli KEYS "challenge:*"
+
+# Clear all sessions (careful!)
+redis-cli EVAL "return redis.call('del', unpack(redis.call('keys', ARGV[1])))" 0 "sess:*"
+```
+
+### Session Data Structure
+
+```typescript
+interface Session {
+  id: string;
+  userId: number;
+  username: string;
+  createdAt: number;
+  expiresAt: number;
+  lastRefreshed: number;
+  userAgent: string;
+  ipAddress: string;
+}
+
+interface Challenge {
+  id: string;
+  userId?: number;
+  type: 'registration' | 'authentication';
+  challenge: string;
+  createdAt: number;
+  expiresAt: number;
+}
+```
 
 ## 🚀 Quick Start
 
@@ -153,12 +211,14 @@ graph TB
         • Vite + TypeScript
         • Material Design UI
         • Real-time validation
-        • WebAuthn client`"]
+        • WebAuthn client
+        • Session monitoring`"]
 
         Browser["`**Browser**
         • WebAuthn API
         • Biometric sensors
-        • Secure storage`"]
+        • Secure storage
+        • HttpOnly cookies`"]
     end
 
     subgraph "Server Infrastructure"
@@ -167,7 +227,8 @@ graph TB
         • Express.js
         • WebAuthn server
         • Rate limiting
-        • CORS & Helmet`"]
+        • CORS & Helmet
+        • Session validation`"]
 
         Database["`**PostgreSQL**
         Port: 5432
@@ -181,13 +242,16 @@ graph TB
         • Session storage
         • Challenge storage
         • 1-week TTL
-        • Memory management`"]
+        • Cross-tab sync
+        • Auto-expiration`"]
     end
 
     Frontend <-->|HTTPS/API Calls| Backend
     Backend <-->|SQL Queries| Database
-    Backend <-->|Session Storage| Redis
+    Backend <-->|Session & Challenge Storage| Redis
     Frontend -.->|WebAuthn| Browser
+    Frontend -.->|HttpOnly Cookies| Browser
+    Browser -.->|Session Cookies| Backend
 
     style Frontend fill:#e1f5fe
     style Backend fill:#f3e5f5
@@ -219,23 +283,29 @@ graph TD
         EventHandler["`**EventHandler**
         • User interactions
         • Input handling
-        • Button clicks`"]
+        • Button clicks
+        • Modal management`"]
 
         MessageService["`**MessageService**
         • Toast notifications
         • Error messages
-        • Success feedback`"]
+        • Success feedback
+        • Auto-dismissal`"]
 
         SessionManager["`**SessionManager**
         • Redis session management
         • Event-driven architecture
         • Automatic expiration monitoring
-        • Session state synchronization`"]
+        • Cross-tab synchronization
+        • HttpOnly cookie handling`"]
     end
 
     subgraph "Main Application"
         PasskeysApp["`**PasskeysApp**
-        Main orchestrator`"]
+        • Main orchestrator
+        • State management
+        • Service coordination
+        • Error handling`"]
     end
 
     PasskeysApp --> AuthService
@@ -248,11 +318,16 @@ graph TD
     EventHandler --> ValidationService
     ValidationService --> UIRenderer
     AuthService --> MessageService
+    SessionManager --> MessageService
+    SessionManager --> UIRenderer
 
     style PasskeysApp fill:#ffeb3b
     style AuthService fill:#4caf50
     style ValidationService fill:#2196f3
     style UIRenderer fill:#9c27b0
+    style SessionManager fill:#ff5722
+    style MessageService fill:#795548
+    style EventHandler fill:#607d8b
 ```
 
 ### API Flow Diagram
@@ -262,6 +337,7 @@ sequenceDiagram
     participant U as User
     participant F as Frontend
     participant B as Backend
+    participant R as Redis
     participant D as Database
     participant A as Authenticator
 
@@ -275,25 +351,31 @@ sequenceDiagram
 
     U->>F: Click "Register"
     F->>B: POST /api/register/begin
+    B->>R: Store challenge
     B->>D: Create/get user
     B-->>F: Challenge + options
     F->>A: navigator.credentials.create()
     A-->>F: New credential
     F->>B: POST /api/register/complete
+    B->>R: Verify challenge
     B->>D: Store credential
-    B-->>F: Success
-    F-->>U: Login automatically
+    B->>R: Create session
+    B-->>F: Set HttpOnly cookie
+    F-->>U: Login successful
 
-    Note over U,A: Authentication Flow
-    U->>F: Click "Login"
-    F->>B: POST /api/authenticate/begin
-    B-->>F: Challenge + options
-    F->>A: navigator.credentials.get()
-    A-->>F: Signed assertion
-    F->>B: POST /api/authenticate/complete
-    B->>D: Verify credential
-    B-->>F: Success + user info
-    F-->>U: Welcome back!
+    Note over U,A: Session Management
+    U->>F: Page load/refresh
+    F->>B: GET /api/auth/status
+    B->>R: Validate session
+    R-->>B: Session valid/invalid
+    B-->>F: Auth status
+    F-->>U: Update UI
+
+    Note over U,A: Session Expiration
+    R->>R: TTL reaches 0
+    R->>B: Session expired
+    B-->>F: WS: session_expired
+    F->>U: Show login prompt
 ```
 
 ### Data Flow Architecture
@@ -303,23 +385,26 @@ flowchart LR
     subgraph "Input Layer"
         UI[User Input]
         Events[DOM Events]
+        Session[Session Events]
     end
 
     subgraph "Validation Layer"
         RealTime[Real-time Validation]
         Debounce[Debounced API Calls]
         Rules[Validation Rules]
+        SessionCheck[Session Validation]
     end
 
     subgraph "Authentication Layer"
         WebAuthn[WebAuthn API]
         Challenges[Challenge Management]
         Crypto[Cryptographic Operations]
+        Redis[Redis Session Store]
     end
 
     subgraph "Persistence Layer"
         State[State Management]
-        LocalStore[Local Storage]
+        Cookies[HttpOnly Cookies]
         Database[(PostgreSQL)]
     end
 
@@ -331,15 +416,21 @@ flowchart LR
     Events --> WebAuthn
     WebAuthn --> Challenges
     Challenges --> Crypto
+    Session --> SessionCheck
+    SessionCheck --> Redis
 
     RealTime --> State
     WebAuthn --> State
-    State --> LocalStore
+    State --> Cookies
     Challenges --> Database
+    Redis --> Cookies
 
     style UI fill:#e3f2fd
     style WebAuthn fill:#f3e5f5
     style Database fill:#e8f5e8
+    style Redis fill:#ffcdd2
+    style Session fill:#fff3e0
+    style Cookies fill:#f5f5f5
 ```
 
 ### Backend API Endpoints
@@ -779,7 +870,7 @@ const publicKeyCredentialCreationOptions = {
 - **Prettier** for formatting
 - **Conventional Commits** for clear history
 
-## 📖 Learning Resources
+## 📚 Learning Resources
 
 ### WebAuthn & Passkeys
 
@@ -844,3 +935,377 @@ const publicKeyCredentialCreationOptions = {
 **🌟 Star this project if you found it helpful!**  
 **🐛 Report issues on [GitHub Issues](https://github.com/mabreyes/cssecdv-passkeys/issues)**  
 **💬 Questions? Reach out at [hi@marcr.xyz](mailto:hi@marcr.xyz)**
+
+## 🛡️ Threat Model
+
+### System Trust Boundaries & Threats
+
+```mermaid
+flowchart TB
+    subgraph Client[Client Trust Boundary]
+        direction TB
+        Browser[Browser Environment]
+        WebAuthn[WebAuthn API]
+        TPM[TPM/Secure Enclave]
+
+        subgraph Threats1[Client-side Threats]
+            direction LR
+            XSS[XSS Attacks]
+            Phish[Phishing Attempts]
+            MitB[Man in Browser]
+            style XSS fill:#ff9999
+            style Phish fill:#ff9999
+            style MitB fill:#ff9999
+        end
+    end
+
+    subgraph Network[Network Trust Boundary]
+        direction TB
+        TLS[TLS Channel]
+
+        subgraph Threats2[Network Threats]
+            direction LR
+            MitM[Man in Middle]
+            Replay[Replay Attacks]
+            Sniff[Network Sniffing]
+            style MitM fill:#ff9999
+            style Replay fill:#ff9999
+            style Sniff fill:#ff9999
+        end
+    end
+
+    subgraph Server[Server Trust Boundary]
+        direction TB
+        API[API Server]
+        Redis[Redis Session Store]
+        DB[PostgreSQL Database]
+
+        subgraph Threats3[Server-side Threats]
+            direction LR
+            SQLi[SQL Injection]
+            CSRF[CSRF Attacks]
+            BruteForce[Brute Force]
+            style SQLi fill:#ff9999
+            style CSRF fill:#ff9999
+            style BruteForce fill:#ff9999
+        end
+    end
+
+    %% Mitigations
+    CSP[Content Security Policy]
+    HttpOnly[HttpOnly Cookies]
+    SameSite[SameSite Strict]
+    RateLimit[Rate Limiting]
+    InputValid[Input Validation]
+    PrepStmt[Prepared Statements]
+    TLS1.3[TLS 1.3]
+    Challenge[Challenge-Response]
+
+    style CSP fill:#99ff99
+    style HttpOnly fill:#99ff99
+    style SameSite fill:#99ff99
+    style RateLimit fill:#99ff99
+    style InputValid fill:#99ff99
+    style PrepStmt fill:#99ff99
+    style TLS1.3 fill:#99ff99
+    style Challenge fill:#99ff99
+
+    %% Relationships
+    CSP --> XSS
+    HttpOnly --> XSS
+    SameSite --> CSRF
+    RateLimit --> BruteForce
+    InputValid --> SQLi
+    PrepStmt --> SQLi
+    TLS1.3 --> MitM
+    Challenge --> Replay
+    WebAuthn --> Phish
+    TPM --> MitB
+
+    %% Data flows
+    Browser <--> TLS
+    TLS <--> API
+    API <--> Redis
+    API <--> DB
+
+    style Client fill:#e3f2fd,stroke:#2196f3,stroke-width:2px
+    style Network fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    style Server fill:#e8f5e8,stroke:#4caf50,stroke-width:2px
+```
+
+### Attack Surface & Security Controls
+
+```mermaid
+graph TD
+    subgraph "Attack Surface"
+        direction TB
+        subgraph "Client Attack Surface"
+            C1[DOM-based XSS]
+            C2[Local Storage Access]
+            C3[Browser Extensions]
+            C4[Credential Access]
+        end
+
+        subgraph "Network Attack Surface"
+            N1[TLS Downgrade]
+            N2[Certificate Spoofing]
+            N3[Request Tampering]
+            N4[Response Tampering]
+        end
+
+        subgraph "Server Attack Surface"
+            S1[Session Hijacking]
+            S2[Redis Exposure]
+            S3[DB Injection]
+            S4[File Upload]
+        end
+    end
+
+    subgraph "Security Controls"
+        direction TB
+        subgraph "Prevention"
+            P1[CSP Headers]
+            P2[CORS Policy]
+            P3[Input Sanitization]
+            P4[Parameter Binding]
+        end
+
+        subgraph "Detection"
+            D1[Error Logging]
+            D2[Audit Trails]
+            D3[Rate Monitoring]
+            D4[Session Tracking]
+        end
+
+        subgraph "Response"
+            R1[Auto-blocking]
+            R2[Session Termination]
+            R3[Alert Generation]
+            R4[Incident Logging]
+        end
+    end
+
+    %% Threat-Control Mappings
+    C1 --> P1
+    C2 --> P2
+    C3 --> P1
+    C4 --> P2
+
+    N1 --> P2
+    N2 --> P2
+    N3 --> P3
+    N4 --> P4
+
+    S1 --> D4
+    S2 --> D2
+    S3 --> D1
+    S4 --> D3
+
+    D1 --> R3
+    D2 --> R4
+    D3 --> R1
+    D4 --> R2
+
+    style C1 fill:#ffcdd2
+    style C2 fill:#ffcdd2
+    style C3 fill:#ffcdd2
+    style C4 fill:#ffcdd2
+
+    style N1 fill:#fff9c4
+    style N2 fill:#fff9c4
+    style N3 fill:#fff9c4
+    style N4 fill:#fff9c4
+
+    style S1 fill:#ffccbc
+    style S2 fill:#ffccbc
+    style S3 fill:#ffccbc
+    style S4 fill:#ffccbc
+
+    style P1 fill:#c8e6c9
+    style P2 fill:#c8e6c9
+    style P3 fill:#c8e6c9
+    style P4 fill:#c8e6c9
+
+    style D1 fill:#bbdefb
+    style D2 fill:#bbdefb
+    style D3 fill:#bbdefb
+    style D4 fill:#bbdefb
+
+    style R1 fill:#e1bee7
+    style R2 fill:#e1bee7
+    style R3 fill:#e1bee7
+    style R4 fill:#e1bee7
+```
+
+### Trust Boundaries
+
+#### Client Trust Boundary
+
+- **Browser Environment**
+  - Secured by CSP and strict CORS policies
+  - No access to sensitive data in localStorage
+  - HttpOnly cookies prevent XSS access
+- **WebAuthn API**
+  - Hardware-backed credential storage
+  - Phishing-resistant by design
+  - Origin-bound credentials
+- **TPM/Secure Enclave**
+  - Secure key storage
+  - Protected credential operations
+  - Hardware-level isolation
+
+#### Network Trust Boundary
+
+- **TLS Channel**
+  - TLS 1.3 enforced
+  - Strong cipher suites only
+  - Certificate pinning
+- **Request/Response**
+  - Signed requests
+  - Challenge-response protocol
+  - Anti-replay protection
+
+#### Server Trust Boundary
+
+- **API Server**
+  - Input validation
+  - Rate limiting
+  - Request sanitization
+- **Redis Session Store**
+  - Network isolation
+  - Password protection
+  - Data encryption
+- **PostgreSQL Database**
+  - Prepared statements
+  - Least privilege access
+  - Connection encryption
+
+### Security Controls
+
+#### Prevention Controls
+
+1. **Content Security Policy (CSP)**
+
+   ```http
+   Content-Security-Policy: default-src 'self';
+     script-src 'self' 'wasm-unsafe-eval';
+     style-src 'self' 'unsafe-inline';
+     img-src 'self' data:;
+     connect-src 'self';
+     frame-ancestors 'none';
+     form-action 'self';
+   ```
+
+2. **CORS Configuration**
+
+   ```typescript
+   const corsOptions = {
+     origin: process.env.CORS_ORIGIN,
+     credentials: true,
+     methods: ['GET', 'POST'],
+     allowedHeaders: ['Content-Type', 'Authorization'],
+   };
+   ```
+
+3. **Cookie Security**
+   ```typescript
+   const cookieOptions = {
+     httpOnly: true,
+     secure: true,
+     sameSite: 'strict',
+     maxAge: 604800000,
+     domain: process.env.COOKIE_DOMAIN,
+   };
+   ```
+
+#### Detection Controls
+
+1. **Rate Limiting**
+
+   ```typescript
+   const rateLimiter = rateLimit({
+     windowMs: 15 * 60 * 1000,
+     max: 100,
+     standardHeaders: true,
+     legacyHeaders: false,
+   });
+   ```
+
+2. **Audit Logging**
+
+   ```typescript
+   interface AuditLog {
+     timestamp: Date;
+     userId?: string;
+     action: string;
+     resource: string;
+     ip: string;
+     userAgent: string;
+     status: 'success' | 'failure';
+     details?: Record<string, unknown>;
+   }
+   ```
+
+3. **Session Monitoring**
+   ```typescript
+   interface SessionMonitor {
+     trackLogin(sessionId: string): void;
+     trackActivity(sessionId: string): void;
+     detectAnomalies(sessionId: string): Promise<boolean>;
+     enforceRateLimit(ip: string): Promise<boolean>;
+   }
+   ```
+
+#### Response Controls
+
+1. **Automatic Blocking**
+
+   - IP-based blocking for repeated failures
+   - Account lockout after suspicious activity
+   - Geolocation-based restrictions
+
+2. **Incident Response**
+
+   - Real-time alert generation
+   - Automatic session termination
+   - Audit trail generation
+   - Admin notification system
+
+3. **Recovery Procedures**
+   - Session recovery mechanisms
+   - Backup authentication methods
+   - Account recovery process
+
+### Security Headers
+
+```typescript
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'"],
+        frameAncestors: ["'none'"],
+        formAction: ["'self'"],
+      },
+    },
+    crossOriginEmbedderPolicy: true,
+    crossOriginOpenerPolicy: { policy: 'same-origin' },
+    crossOriginResourcePolicy: { policy: 'same-origin' },
+    dnsPrefetchControl: { allow: false },
+    frameguard: { action: 'deny' },
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    },
+    ieNoOpen: true,
+    noSniff: true,
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    xssFilter: true,
+  })
+);
+```
